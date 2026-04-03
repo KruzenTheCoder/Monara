@@ -73,9 +73,9 @@ export const FinancialProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   // Apply theme when user changes
   useEffect(() => {
-    if (user && user.theme && appTheme.themes[user.theme]) {
-      appTheme.colors.accent = appTheme.themes[user.theme].primary;
-      appTheme.colors.status.green = appTheme.themes[user.theme].secondary;
+    if (user && user.theme && appTheme.colors.themes[user.theme]) {
+      appTheme.colors.accent = appTheme.colors.themes[user.theme].primary;
+      appTheme.colors.status.green = appTheme.colors.themes[user.theme].secondary;
     }
   }, [user?.theme]);
 

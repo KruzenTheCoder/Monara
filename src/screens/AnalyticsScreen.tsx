@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, Dimensions } from 'react-native';
-import Svg, { Rect, Text as SvgText, Circle } from 'react-native-svg';
+import Svg, { Rect, Text as SvgText, Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
 import { GlassBox } from '../components/GlassBox';
 import { AnimatedBackground } from '../components/AnimatedBackground';
 import { theme, formatCurrencyFull, getCategoryColor } from '../utils/theme';
@@ -181,16 +181,16 @@ export const AnalyticsScreen = () => {
               </Text>
             ) : (
               <Svg width={CHART_W} height={BAR_H + 40}>
-                <Svg.Defs>
-                  <Svg.LinearGradient id="gradInc" x1="0%" y1="0%" x2="0%" y2="100%">
-                    <Svg.Stop offset="0%" stopColor="#10B981" stopOpacity="1" />
-                    <Svg.Stop offset="100%" stopColor="#10B981" stopOpacity="0.3" />
-                  </Svg.LinearGradient>
-                  <Svg.LinearGradient id="gradExp" x1="0%" y1="0%" x2="0%" y2="100%">
-                    <Svg.Stop offset="0%" stopColor="#EF4444" stopOpacity="1" />
-                    <Svg.Stop offset="100%" stopColor="#EF4444" stopOpacity="0.3" />
-                  </Svg.LinearGradient>
-                </Svg.Defs>
+                <Defs>
+                  <LinearGradient id="gradInc" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <Stop offset="0%" stopColor="#10B981" stopOpacity="1" />
+                    <Stop offset="100%" stopColor="#10B981" stopOpacity="0.3" />
+                  </LinearGradient>
+                  <LinearGradient id="gradExp" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <Stop offset="0%" stopColor="#EF4444" stopOpacity="1" />
+                    <Stop offset="100%" stopColor="#EF4444" stopOpacity="0.3" />
+                  </LinearGradient>
+                </Defs>
                 {months.map((m, i) => {
                   const groupW = CHART_W / 6;
                   const x = i * groupW + groupW * 0.15;

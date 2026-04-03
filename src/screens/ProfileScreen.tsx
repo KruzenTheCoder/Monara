@@ -34,7 +34,7 @@ export const ProfileScreen = () => {
   }, []);
 
   const currentCurrency = getCurrencyInfo(user.currency || 'USD');
-  const currentTheme = theme.themes[user.theme || 'default'];
+  const currentTheme = theme.colors.themes[user.theme || 'default'];
 
   const filteredCurrencies = useMemo(() => {
     if (!searchQuery.trim()) return CURRENCIES;
@@ -109,7 +109,7 @@ export const ProfileScreen = () => {
     );
   };
 
-  const themeKeys = Object.keys(theme.themes);
+  const themeKeys = Object.keys(theme.colors.themes);
 
   return (
     <AnimatedBackground>
@@ -208,7 +208,7 @@ export const ProfileScreen = () => {
             </View>
             <ScrollView contentContainerStyle={{ paddingBottom: 40, paddingHorizontal: 16 }}>
               {themeKeys.map((key) => {
-                const t = theme.themes[key];
+                const t = theme.colors.themes[key];
                 const isSelected = key === (user.theme || 'default');
                 return (
                   <TouchableOpacity
