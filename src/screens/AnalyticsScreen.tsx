@@ -5,8 +5,8 @@ import { GlassBox } from '../components/GlassBox';
 import { AnimatedBackground } from '../components/AnimatedBackground';
 import { theme, formatCurrencyFull, getCategoryColor } from '../utils/theme';
 import { useFinancial } from '../context/FinancialContext';
-import { format, subMonths, isThisMonth, isSameMonth } from 'date-fns';
-import { TrendingUp, TrendingDown, BarChart2 } from 'lucide-react-native';
+import { format, subMonths, isThisMonth, isSameMonth, getDate, getDaysInMonth } from 'date-fns';
+import { TrendingUp, TrendingDown, BarChart2, Activity, PieChart } from 'lucide-react-native';
 
 const SCREEN_W = Dimensions.get('window').width;
 const CHART_W = SCREEN_W - 80;
@@ -37,6 +37,18 @@ export const AnalyticsScreen = () => {
 
   const totalCatSpend = catEntries.reduce((s, [, v]) => s + v, 0);
 
+  // Month-over-Month logic
+  const currentMonthData = months[5];
+  const lastMonthData = months[4];
+  const momExpenseChange = lastMonthData.expense > 0 
+    ? ((currentMonthData.expense - lastMonthData.expense) / lastMonthData.expense) * 100 
+    : 0;
+
+  // Daily Average
+  const today = new Date();
+  const daysPassed = getDate(today);
+  const dailyAverage = monthlyExpenses / Math.max(daysPassed, 1);
+
   const BAR_H = 120;
   const BAR_W = Math.floor((CHART_W - 10) / 6 / 3);
   const GAP = BAR_W * 0.3;
@@ -48,7 +60,7 @@ export const AnalyticsScreen = () => {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.header}>
-          <Text style={styles.title}>Analytics</Text>
+          <Text style={styles.title}>Analytics & Reports</Text>
           <Text style={theme.typography.label}>{format(new Date(), 'MMMM yyyy')}</Text>
         </View>
 
@@ -74,6 +86,33 @@ export const AnalyticsScreen = () => {
             <Text style={[styles.summaryVal, { color: theme.colors.accent }]}>
               {savingsRate.toFixed(0)}%
             </Text>
+          </GlassBox>
+        </View>
+
+        {/* Deep Insights */}
+        <Text style={styles.sectionTitle}>Key Insights</Text>
+        <View style={styles.insightsGrid}>
+          <GlassBox style={styles.insightBox}>
+            <View style={styles.insightIconWrap}>
+              <Activity color="#64B5F6" size={16} />
+            </View>
+            <Text style={styles.insightLabel}>Daily Avg Spend</Text>
+            <Text style={styles.insightValue}>{formatCurrencyFull(dailyAverage)}</Text>
+            <Text style={styles.insightSub}>Based on {daysPassed} days</Text>
+          </GlassBox>
+          
+          <GlassBox style={styles.insightBox}>
+            <View style={[styles.insightIconWrap, { backgroundColor: 'rgba(255,183,77,0.1)' }]}>
+              <PieChart color="#FFB74D" size={16} />
+            </View>
+            <Text style={styles.insightLabel}>MoM Expense</Text>
+            <Text style={[
+              styles.insightValue, 
+              { color: momExpenseChange > 0 ? theme.colors.status.red : theme.colors.status.green }
+            ]}>
+              {momExpenseChange > 0 ? '+' : ''}{momExpenseChange.toFixed(1)}%
+            </Text>
+            <Text style={styles.insightSub}>vs Last Month</Text>
           </GlassBox>
         </View>
 
@@ -142,6 +181,16 @@ export const AnalyticsScreen = () => {
               </Text>
             ) : (
               <Svg width={CHART_W} height={BAR_H + 40}>
+                <Svg.Defs>
+                  <Svg.LinearGradient id="gradInc" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <Svg.Stop offset="0%" stopColor="#10B981" stopOpacity="1" />
+                    <Svg.Stop offset="100%" stopColor="#10B981" stopOpacity="0.3" />
+                  </Svg.LinearGradient>
+                  <Svg.LinearGradient id="gradExp" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <Svg.Stop offset="0%" stopColor="#EF4444" stopOpacity="1" />
+                    <Svg.Stop offset="100%" stopColor="#EF4444" stopOpacity="0.3" />
+                  </Svg.LinearGradient>
+                </Svg.Defs>
                 {months.map((m, i) => {
                   const groupW = CHART_W / 6;
                   const x = i * groupW + groupW * 0.15;
@@ -157,7 +206,8 @@ export const AnalyticsScreen = () => {
                           y={BAR_H - incH}
                           width={BAR_W}
                           height={incH}
-                          fill="rgba(16,185,129,0.7)"
+                          fill="url(#gradInc)"
+                          fillOpacity={0.9}
                           rx={3}
                         />
                       )}
@@ -168,7 +218,8 @@ export const AnalyticsScreen = () => {
                           y={BAR_H - expH}
                           width={BAR_W}
                           height={expH}
-                          fill="rgba(239,68,68,0.7)"
+                          fill="url(#gradExp)"
+                          fillOpacity={0.9}
                           rx={3}
                         />
                       )}
@@ -190,11 +241,11 @@ export const AnalyticsScreen = () => {
             {/* Legend */}
             <View style={styles.chartLegend}>
               <View style={styles.legendItem}>
-                <View style={[styles.legendDot, { backgroundColor: 'rgba(16,185,129,0.7)' }]} />
+                <View style={[styles.legendDot, { backgroundColor: 'rgba(16,185,129,0.9)' }]} />
                 <Text style={theme.typography.label}>Income</Text>
               </View>
               <View style={styles.legendItem}>
-                <View style={[styles.legendDot, { backgroundColor: 'rgba(239,68,68,0.7)' }]} />
+                <View style={[styles.legendDot, { backgroundColor: 'rgba(239,68,68,0.9)' }]} />
                 <Text style={theme.typography.label}>Expenses</Text>
               </View>
             </View>
@@ -202,7 +253,7 @@ export const AnalyticsScreen = () => {
         </GlassBox>
 
         {/* Spending by Category */}
-        <Text style={styles.sectionTitle}>Spending Breakdown</Text>
+        <Text style={styles.sectionTitle}>Top Spending Categories</Text>
         {catEntries.length === 0 ? (
           <GlassBox style={styles.emptyCard}>
             <Text style={[theme.typography.label, { textAlign: 'center' }]}>
@@ -256,7 +307,7 @@ export const AnalyticsScreen = () => {
             </View>
             <View style={styles.statSep} />
             <View style={styles.statBox}>
-              <Text style={[styles.statNum, { color: theme.colors.status.green }]}>
+              <Text style={[styles.statNum, { color: theme.colors.accent }]}>
                 {savingsRate.toFixed(0)}%
               </Text>
               <Text style={theme.typography.label}>Savings Rate</Text>
@@ -303,6 +354,39 @@ const styles = StyleSheet.create({
   summaryVal: {
     fontSize: 14,
     fontWeight: '700',
+  },
+  insightsGrid: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 20,
+  },
+  insightBox: {
+    flex: 1,
+    padding: 16,
+  },
+  insightIconWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(100, 181, 246, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  insightLabel: {
+    fontSize: 12,
+    color: '#A0A0A0',
+    marginBottom: 4,
+  },
+  insightValue: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginBottom: 4,
+  },
+  insightSub: {
+    fontSize: 11,
+    color: '#666',
   },
   netCard: {
     marginBottom: 16,

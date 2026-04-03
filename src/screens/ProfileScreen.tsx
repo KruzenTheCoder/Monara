@@ -9,7 +9,7 @@ import { GlassBox } from '../components/GlassBox';
 import { useFinancial } from '../context/FinancialContext';
 import { theme } from '../utils/theme';
 import { CURRENCIES, getCurrencyInfo } from '../utils/currencies';
-import { Check, ChevronLeft, ChevronRight, User, Target, Award, Search, X } from 'lucide-react-native';
+import { Check, ChevronLeft, ChevronRight, User, Target, Award, Search, X, Palette } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 
 export const ProfileScreen = () => {
@@ -20,6 +20,7 @@ export const ProfileScreen = () => {
   const [saving, setSaving] = useState(false);
   const [showCurrencyModal, setShowCurrencyModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showThemeModal, setShowThemeModal] = useState(false);
 
   // Entrance animation
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -33,6 +34,7 @@ export const ProfileScreen = () => {
   }, []);
 
   const currentCurrency = getCurrencyInfo(user.currency || 'USD');
+  const currentTheme = theme.themes[user.theme || 'default'];
 
   const filteredCurrencies = useMemo(() => {
     if (!searchQuery.trim()) return CURRENCIES;
@@ -51,6 +53,16 @@ export const ProfileScreen = () => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       navigation.goBack();
     }, 400);
+  };
+
+  const handleThemeSelect = async (themeKey: string) => {
+    if (themeKey === user.theme) {
+      setShowThemeModal(false);
+      return;
+    }
+    Haptics.selectionAsync();
+    await updateUser({ theme: themeKey });
+    setShowThemeModal(false);
   };
 
   const handleCurrencySelect = (code: string) => {
@@ -96,6 +108,8 @@ export const ProfileScreen = () => {
       </TouchableOpacity>
     );
   };
+
+  const themeKeys = Object.keys(theme.themes);
 
   return (
     <AnimatedBackground>
@@ -144,6 +158,19 @@ export const ProfileScreen = () => {
           />
         </GlassBox>
 
+        {/* Theme Selection */}
+        <Text style={styles.sectionTitle}>Appearance</Text>
+        <TouchableOpacity activeOpacity={0.7} onPress={() => setShowThemeModal(true)}>
+          <GlassBox style={styles.currencyCard}>
+            <View style={[styles.themePreviewDot, { backgroundColor: currentTheme?.primary || theme.colors.accent }]} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.currencyCardName}>App Theme</Text>
+              <Text style={styles.currencyCardCode}>{currentTheme?.name || 'Monara Classic'}</Text>
+            </View>
+            <ChevronRight color="#555" size={20} />
+          </GlassBox>
+        </TouchableOpacity>
+
         {/* Currency Selection - tap to open modal */}
         <Text style={styles.sectionTitle}>Currency</Text>
         <TouchableOpacity activeOpacity={0.7} onPress={() => setShowCurrencyModal(true)}>
@@ -168,6 +195,41 @@ export const ProfileScreen = () => {
           <Text style={styles.saveBtnText}>{saving ? 'Saving...' : 'Save Changes'}</Text>
         </TouchableOpacity>
       </Animated.ScrollView>
+
+      {/* Theme Picker Modal */}
+      <Modal visible={showThemeModal} animationType="slide" transparent statusBarTranslucent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Select Theme</Text>
+              <TouchableOpacity style={styles.modalClose} onPress={() => setShowThemeModal(false)}>
+                <X color="#A0A0A0" size={22} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView contentContainerStyle={{ paddingBottom: 40, paddingHorizontal: 16 }}>
+              {themeKeys.map((key) => {
+                const t = theme.themes[key];
+                const isSelected = key === (user.theme || 'default');
+                return (
+                  <TouchableOpacity
+                    key={key}
+                    style={[styles.themeRow, isSelected && styles.themeRowSelected]}
+                    onPress={() => handleThemeSelect(key)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.themeColors}>
+                      <View style={[styles.themeColorDot, { backgroundColor: t.primary }]} />
+                      <View style={[styles.themeColorDot, { backgroundColor: t.secondary, marginLeft: -10 }]} />
+                    </View>
+                    <Text style={[styles.themeName, isSelected && { color: t.primary }]}>{t.name}</Text>
+                    {isSelected && <Check color={t.primary} size={20} />}
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
 
       {/* Currency Picker Modal */}
       <Modal visible={showCurrencyModal} animationType="slide" transparent statusBarTranslucent>
@@ -292,6 +354,40 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#FFF',
+  },
+  themePreviewDot: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    marginRight: 4,
+  },
+  themeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    gap: 14,
+    borderRadius: 16,
+    marginBottom: 8,
+  },
+  themeRowSelected: {
+    backgroundColor: 'rgba(255,255,255,0.05)',
+  },
+  themeColors: {
+    flexDirection: 'row',
+  },
+  themeColorDot: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: '#1A1A1F',
+  },
+  themeName: {
+    flex: 1,
+    fontSize: 15,
+    color: '#FFF',
+    fontWeight: '500',
   },
   currencyCardCode: {
     fontSize: 13,

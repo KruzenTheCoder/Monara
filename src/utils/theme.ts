@@ -1,23 +1,50 @@
 export const theme = {
   colors: {
-    backgroundStart: '#121212',
-    backgroundEnd: '#121212',
-    backgroundMid: '#121212',
+    backgroundStart: '#0A0A0B',
+    backgroundEnd: '#0A0A0B',
+    backgroundMid: '#0A0A0B',
     primaryText: '#FFFFFF',
-    secondaryText: '#A0A0A0',
-    glassBackground: '#1E1E1E',
-    glassBorder: '#2C2C2C',
-    glassBorderTop: '#2C2C2C',
+    secondaryText: '#8E8E93',
+    glassBackground: 'rgba(28, 28, 30, 0.7)',
+    glassBorder: 'rgba(255, 255, 255, 0.1)',
+    glassBorderTop: 'rgba(255, 255, 255, 0.15)',
     accent: '#BB86FC',
-    accentGlow: 'transparent',
+    accentGlow: 'rgba(187, 134, 252, 0.3)',
     status: {
-      green: '#03DAC6',
-      greenGlow: 'transparent',
-      amber: '#FFB74D',
-      amberGlow: 'transparent',
-      red: '#CF6679',
-      redGlow: 'transparent',
+      green: '#34C759',
+      greenGlow: 'rgba(52, 199, 89, 0.3)',
+      amber: '#FF9500',
+      amberGlow: 'rgba(255, 149, 0, 0.3)',
+      red: '#FF3B30',
+      redGlow: 'rgba(255, 59, 48, 0.3)',
     },
+    themes: {
+      default: {
+        primary: '#BB86FC',
+        secondary: '#03DAC6',
+        name: 'Monara Classic'
+      },
+      emerald: {
+        primary: '#10B981',
+        secondary: '#34D399',
+        name: 'Emerald City'
+      },
+      ocean: {
+        primary: '#3B82F6',
+        secondary: '#60A5FA',
+        name: 'Ocean Deep'
+      },
+      sunset: {
+        primary: '#F59E0B',
+        secondary: '#FBBF24',
+        name: 'Golden Sunset'
+      },
+      rose: {
+        primary: '#F43F5E',
+        secondary: '#FB7185',
+        name: 'Midnight Rose'
+      }
+    } as Record<string, { primary: string; secondary: string; name: string }>,
     category: {
       'Food & Dining': '#FFB74D',
       'Transport': '#64B5F6',
