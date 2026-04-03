@@ -9,11 +9,16 @@ import { format } from 'date-fns';
 import { useNavigation } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
 
+import { CustomAlert } from '../components/CustomAlert';
+
 export const HomeScreen = () => {
   const { transactions, balance, monthlyIncome, monthlyExpenses, savingsRate, user, deleteTransaction } = useFinancial();
   const navigation = useNavigation<any>();
   const recentTx = transactions.slice(0, 6);
   const [showMessages, setShowMessages] = useState(false);
+  const [selectedTx, setSelectedTx] = useState<typeof transactions[0] | null>(null);
+  const [showTxModal, setShowTxModal] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const openAddTransaction = (type: 'expense' | 'income') => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -22,28 +27,23 @@ export const HomeScreen = () => {
 
   const showTxDetail = (tx: typeof transactions[0]) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    const sign = tx.type === 'income' ? '+' : '-';
-    Alert.alert(
-      tx.category,
-      `${sign}${formatCurrencyFull(tx.amount, currency)}\n${format(new Date(tx.date), 'EEEE, MMMM d · h:mm a')}\nType: ${tx.type}${tx.note ? `\nNote: ${tx.note}` : ''}`,
-      [
-        { text: 'Close', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: () => {
-            Alert.alert('Delete Transaction?', 'This cannot be undone.', [
-              { text: 'Cancel', style: 'cancel' },
-              {
-                text: 'Delete',
-                style: 'destructive',
-                onPress: () => deleteTransaction(tx.id),
-              },
-            ]);
-          },
-        },
-      ],
-    );
+    setSelectedTx(tx);
+    setShowTxModal(true);
+  };
+
+  const handleDeleteRequest = () => {
+    setShowTxModal(false);
+    setTimeout(() => {
+      setShowDeleteConfirm(true);
+    }, 300);
+  };
+
+  const confirmDelete = () => {
+    if (selectedTx) {
+      deleteTransaction(selectedTx.id);
+    }
+    setShowDeleteConfirm(false);
+    setSelectedTx(null);
   };
 
   const currency = user.currency || 'USD';
@@ -299,6 +299,63 @@ export const HomeScreen = () => {
         )}
         </Animated.View>
       </ScrollView>
+      <CustomAlert
+        visible={showTxModal}
+        onClose={() => { setShowTxModal(false); setSelectedTx(null); }}
+        title={selectedTx?.category || 'Transaction'}
+        message={
+          <View style={styles.txModalContent}>
+            <Text style={[
+              styles.txModalAmount,
+              { color: selectedTx?.type === 'income' ? theme.colors.status.green : theme.colors.primaryText }
+            ]}>
+              {selectedTx?.type === 'income' ? '+' : '-'}
+              {selectedTx ? formatCurrencyFull(selectedTx.amount, currency) : ''}
+            </Text>
+            <View style={styles.txModalDetailRow}>
+              <Text style={styles.txModalLabel}>Date</Text>
+              <Text style={styles.txModalValue}>
+                {selectedTx ? format(new Date(selectedTx.date), 'EEEE, MMMM d · h:mm a') : ''}
+              </Text>
+            </View>
+            <View style={styles.txModalDetailRow}>
+              <Text style={styles.txModalLabel}>Type</Text>
+              <Text style={styles.txModalValue}>{selectedTx?.type}</Text>
+            </View>
+            {selectedTx?.note && (
+              <View style={styles.txModalDetailRow}>
+                <Text style={styles.txModalLabel}>Note</Text>
+                <Text style={styles.txModalValue}>{selectedTx.note}</Text>
+              </View>
+            )}
+          </View>
+        }
+        primaryAction={{
+          label: 'Delete',
+          color: theme.colors.status.red,
+          onPress: handleDeleteRequest
+        }}
+        secondaryAction={{
+          label: 'Close',
+          onPress: () => { setShowTxModal(false); setSelectedTx(null); }
+        }}
+      />
+
+      <CustomAlert
+        visible={showDeleteConfirm}
+        onClose={() => { setShowDeleteConfirm(false); setSelectedTx(null); }}
+        title="Delete Transaction"
+        message="Are you sure you want to delete this transaction? This action cannot be undone."
+        primaryAction={{
+          label: 'Delete',
+          color: theme.colors.status.red,
+          onPress: confirmDelete
+        }}
+        secondaryAction={{
+          label: 'Cancel',
+          onPress: () => { setShowDeleteConfirm(false); setSelectedTx(null); }
+        }}
+      />
     </AnimatedBackground>
   );
 };
@@ -584,5 +641,30 @@ const styles = StyleSheet.create({
     color: '#A0A0A0',
     textAlign: 'center',
     lineHeight: 18,
+  },
+  txModalContent: {
+    paddingVertical: 10,
+  },
+  txModalAmount: {
+    fontSize: 36,
+    fontWeight: '700',
+    marginBottom: 20,
+    letterSpacing: -1,
+  },
+  txModalDetailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.05)',
+  },
+  txModalLabel: {
+    fontSize: 14,
+    color: '#A0A0A0',
+  },
+  txModalValue: {
+    fontSize: 14,
+    color: '#FFFFFF',
+    fontWeight: '500',
   },
 });

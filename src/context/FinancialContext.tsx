@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { format, isThisMonth } from 'date-fns';
-import { Transaction, Budget } from '../types';
+import { Transaction, Budget, CategoryDef, EXPENSE_CATEGORIES, INCOME_CATEGORIES } from '../types';
 import { convertAmount } from '../utils/currencies';
 
 const KEYS = {
@@ -16,7 +16,7 @@ export interface UserData {
   total_points: number;
   last_log_date: string | null;
   currency: string;
-  theme: string;
+  custom_categories: CategoryDef[];
 }
 
 const DEFAULT_BUDGETS: Budget[] = [
@@ -36,6 +36,7 @@ const DEFAULT_USER: UserData = {
   last_log_date: null,
   currency: 'USD',
   theme: 'default',
+  custom_categories: [],
 };
 
 interface FinancialContextType {
@@ -48,6 +49,10 @@ interface FinancialContextType {
   addTransaction: (t: Omit<Transaction, 'id' | 'user_id'>) => Promise<void>;
   deleteTransaction: (id: string) => Promise<void>;
   updateBudgetLimit: (id: string, limit: number) => Promise<void>;
+  addCustomCategory: (cat: CategoryDef) => Promise<void>;
+  deleteCustomCategory: (id: string) => Promise<void>;
+  expenseCategories: CategoryDef[];
+  incomeCategories: CategoryDef[];
   balance: number;
   monthlyIncome: number;
   monthlyExpenses: number;
@@ -216,6 +221,28 @@ export const FinancialProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     [budgets],
   );
 
+  const expenseCategories = useMemo(() => {
+    return [...EXPENSE_CATEGORIES, ...(user.custom_categories?.filter(c => c.type === 'expense') || [])];
+  }, [user.custom_categories]);
+
+  const incomeCategories = useMemo(() => {
+    return [...INCOME_CATEGORIES, ...(user.custom_categories?.filter(c => c.type === 'income') || [])];
+  }, [user.custom_categories]);
+
+  const addCustomCategory = useCallback(async (cat: CategoryDef) => {
+    const updatedCats = [...(user.custom_categories || []), cat];
+    const updatedUser = { ...user, custom_categories: updatedCats };
+    setUser(updatedUser);
+    await AsyncStorage.setItem(KEYS.USER, JSON.stringify(updatedUser));
+  }, [user]);
+
+  const deleteCustomCategory = useCallback(async (id: string) => {
+    const updatedCats = (user.custom_categories || []).filter(c => c.id !== id);
+    const updatedUser = { ...user, custom_categories: updatedCats };
+    setUser(updatedUser);
+    await AsyncStorage.setItem(KEYS.USER, JSON.stringify(updatedUser));
+  }, [user]);
+
   return (
     <FinancialContext.Provider
       value={{
@@ -228,6 +255,10 @@ export const FinancialProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         addTransaction,
         deleteTransaction,
         updateBudgetLimit,
+        addCustomCategory,
+        deleteCustomCategory,
+        expenseCategories,
+        incomeCategories,
         balance,
         monthlyIncome,
         monthlyExpenses,

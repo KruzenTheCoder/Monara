@@ -18,23 +18,28 @@ import { useRoute, useNavigation } from '@react-navigation/native';
 import { AnimatedBackground } from '../components/AnimatedBackground';
 import { theme, getCurrencySymbol } from '../utils/theme';
 import { useFinancial } from '../context/FinancialContext';
-import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from '../types';
-import { ChevronDown, ArrowRight, X, Camera, Trash2, Delete } from 'lucide-react-native';
+import { ChevronDown, ArrowRight, X, Camera, Trash2, Delete, Plus } from 'lucide-react-native';
+import { CustomAlert } from '../components/CustomAlert';
 
 const { width } = Dimensions.get('window');
 
 export const TrackingScreen = () => {
   const route = useRoute();
   const navigation = useNavigation();
-  const { addTransaction, user } = useFinancial();
+  const { addTransaction, user, expenseCategories, incomeCategories, addCustomCategory, deleteCustomCategory } = useFinancial();
 
   const initialType = (route.params as any)?.type === 'income' ? 'income' : 'expense';
   const [txType, setTxType] = useState<'expense' | 'income'>(initialType);
   const [amount, setAmount] = useState('0');
-  const [selectedCat, setSelectedCat] = useState(EXPENSE_CATEGORIES[0].label);
+  const [selectedCat, setSelectedCat] = useState(expenseCategories[0].label);
   const [confirming, setConfirming] = useState(false);
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [note, setNote] = useState('');
+  
+  // Custom category states
+  const [showAddCat, setShowAddCat] = useState(false);
+  const [newCatName, setNewCatName] = useState('');
+  const [catToDelete, setCatToDelete] = useState<{id: string, label: string} | null>(null);
 
   // Entrance animation
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -128,18 +133,37 @@ export const TrackingScreen = () => {
     if ((route.params as any)?.type) {
       const t = (route.params as any).type;
       setTxType(t);
-      setSelectedCat(t === 'expense' ? EXPENSE_CATEGORIES[0].label : INCOME_CATEGORIES[0].label);
+      setSelectedCat(t === 'expense' ? expenseCategories[0].label : incomeCategories[0].label);
     }
   }, [route.params]);
 
-  const categories = txType === 'expense' ? EXPENSE_CATEGORIES : INCOME_CATEGORIES;
+  const categories = txType === 'expense' ? expenseCategories : incomeCategories;
   const currencySymbol = getCurrencySymbol(user.currency || 'USD');
 
   const onToggleType = () => {
     Haptics.selectionAsync();
     const newType = txType === 'expense' ? 'income' : 'expense';
     setTxType(newType);
-    setSelectedCat(newType === 'expense' ? EXPENSE_CATEGORIES[0].label : INCOME_CATEGORIES[0].label);
+    setSelectedCat(newType === 'expense' ? expenseCategories[0].label : incomeCategories[0].label);
+  };
+
+  const handleAddCategory = async () => {
+    if (!newCatName.trim()) return;
+    
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    const newCat = {
+      id: `custom_${Date.now()}`,
+      label: newCatName.trim(),
+      color: txType === 'expense' ? '#8B5CF6' : '#10B981', // Default colors
+      iconName: 'Tag',
+      type: txType,
+      isCustom: true
+    };
+    
+    await addCustomCategory(newCat);
+    setSelectedCat(newCat.label);
+    setNewCatName('');
+    setShowAddCat(false);
   };
 
   const handleConfirm = async () => {
@@ -238,6 +262,12 @@ export const TrackingScreen = () => {
                     Haptics.selectionAsync();
                     setSelectedCat(cat.label);
                   }}
+                  onLongPress={() => {
+                    if (cat.isCustom) {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                      setCatToDelete({ id: cat.id, label: cat.label });
+                    }
+                  }}
                   activeOpacity={0.8}
                 >
                   <View
@@ -261,6 +291,16 @@ export const TrackingScreen = () => {
                 </TouchableOpacity>
               );
             })}
+            
+            <TouchableOpacity
+              onPress={() => setShowAddCat(true)}
+              activeOpacity={0.8}
+            >
+              <View style={[styles.catChip, { flexDirection: 'row', alignItems: 'center' }]}>
+                <Plus color="#A0A0A0" size={16} style={{ marginRight: 4 }} />
+                <Text style={styles.catText}>New</Text>
+              </View>
+            </TouchableOpacity>
           </ScrollView>
         </View>
 
@@ -335,6 +375,56 @@ export const TrackingScreen = () => {
           </TouchableOpacity>
         </View>
       </Animated.View>
+
+      <CustomAlert
+        visible={showAddCat}
+        onClose={() => { setShowAddCat(false); setNewCatName(''); }}
+        title="New Category"
+        message={
+          <View style={{ paddingTop: 10 }}>
+            <TextInput
+              style={styles.addCatInput}
+              value={newCatName}
+              onChangeText={setNewCatName}
+              placeholder="Category Name"
+              placeholderTextColor="#555"
+              autoFocus
+            />
+          </View>
+        }
+        primaryAction={{
+          label: 'Create',
+          onPress: handleAddCategory
+        }}
+        secondaryAction={{
+          label: 'Cancel',
+          onPress: () => { setShowAddCat(false); setNewCatName(''); }
+        }}
+      />
+
+      <CustomAlert
+        visible={!!catToDelete}
+        onClose={() => setCatToDelete(null)}
+        title="Delete Category"
+        message={`Remove "${catToDelete?.label}"? Transactions using this category will remain.`}
+        primaryAction={{
+          label: 'Delete',
+          color: theme.colors.status.red,
+          onPress: async () => {
+            if (catToDelete) {
+              await deleteCustomCategory(catToDelete.id);
+              if (selectedCat === catToDelete.label) {
+                setSelectedCat(categories[0].label);
+              }
+              setCatToDelete(null);
+            }
+          }
+        }}
+        secondaryAction={{
+          label: 'Cancel',
+          onPress: () => setCatToDelete(null)
+        }}
+      />
     </AnimatedBackground>
   );
 };
@@ -515,5 +605,15 @@ const styles = StyleSheet.create({
   confirmBtnText: {
     fontSize: 18,
     fontWeight: '800',
+  },
+  addCatInput: {
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+    paddingHorizontal: 16,
+    height: 50,
+    fontSize: 16,
+    color: '#FFF',
   },
 });
