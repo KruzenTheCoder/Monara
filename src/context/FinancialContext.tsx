@@ -16,6 +16,7 @@ export interface UserData {
   total_points: number;
   last_log_date: string | null;
   currency: string;
+  theme: string;
 }
 
 const DEFAULT_BUDGETS: Budget[] = [
@@ -34,6 +35,7 @@ const DEFAULT_USER: UserData = {
   total_points: 0,
   last_log_date: null,
   currency: 'USD',
+  theme: 'default',
 };
 
 interface FinancialContextType {
@@ -55,11 +57,21 @@ interface FinancialContextType {
 
 const FinancialContext = createContext<FinancialContextType | undefined>(undefined);
 
+import { theme as appTheme } from '../utils/theme';
+
 export const FinancialProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [budgets, setBudgets] = useState<Budget[]>(DEFAULT_BUDGETS);
   const [user, setUser] = useState<UserData>(DEFAULT_USER);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Apply theme when user changes
+  useEffect(() => {
+    if (user && user.theme && appTheme.themes[user.theme]) {
+      appTheme.colors.accent = appTheme.themes[user.theme].primary;
+      appTheme.colors.status.green = appTheme.themes[user.theme].secondary;
+    }
+  }, [user?.theme]);
 
   useEffect(() => {
     (async () => {

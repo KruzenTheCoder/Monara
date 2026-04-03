@@ -6,23 +6,22 @@ import {
   TouchableOpacity,
   ScrollView,
   TextInput,
-  KeyboardAvoidingView,
   Platform,
-  TouchableWithoutFeedback,
-  Keyboard,
   Image,
   Animated,
   Alert,
+  Dimensions,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { AnimatedBackground } from '../components/AnimatedBackground';
-import { GlassBox } from '../components/GlassBox';
 import { theme, getCurrencySymbol } from '../utils/theme';
 import { useFinancial } from '../context/FinancialContext';
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from '../types';
-import { ChevronDown, ArrowRight, X, Camera, ImageIcon, Paperclip, Trash2 } from 'lucide-react-native';
+import { ChevronDown, ArrowRight, X, Camera, Trash2, Delete } from 'lucide-react-native';
+
+const { width } = Dimensions.get('window');
 
 export const TrackingScreen = () => {
   const route = useRoute();
@@ -31,17 +30,16 @@ export const TrackingScreen = () => {
 
   const initialType = (route.params as any)?.type === 'income' ? 'income' : 'expense';
   const [txType, setTxType] = useState<'expense' | 'income'>(initialType);
-  const [amount, setAmount] = useState('');
+  const [amount, setAmount] = useState('0');
   const [selectedCat, setSelectedCat] = useState(EXPENSE_CATEGORIES[0].label);
   const [confirming, setConfirming] = useState(false);
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [note, setNote] = useState('');
 
-  const inputRef = useRef<TextInput>(null);
-
   // Entrance animation
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(40)).current;
+  const amountScaleAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     Animated.parallel([
@@ -49,6 +47,39 @@ export const TrackingScreen = () => {
       Animated.spring(slideAnim, { toValue: 0, tension: 80, friction: 12, useNativeDriver: true }),
     ]).start();
   }, []);
+
+  const triggerAmountBounce = () => {
+    amountScaleAnim.setValue(1.1);
+    Animated.spring(amountScaleAnim, {
+      toValue: 1,
+      friction: 4,
+      tension: 100,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const handleKeyPress = (key: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    triggerAmountBounce();
+    
+    if (key === 'del') {
+      setAmount(prev => prev.length > 1 ? prev.slice(0, -1) : '0');
+      return;
+    }
+
+    if (key === '.' && amount.includes('.')) return;
+    
+    // Max 2 decimal places
+    if (amount.includes('.') && amount.split('.')[1].length >= 2) return;
+
+    // Max 7 digits total
+    if (amount.replace('.', '').length >= 7) return;
+
+    setAmount(prev => {
+      if (prev === '0' && key !== '.') return key;
+      return prev + key;
+    });
+  };
 
   const pickPhoto = async () => {
     Haptics.selectionAsync();
@@ -112,7 +143,7 @@ export const TrackingScreen = () => {
   };
 
   const handleConfirm = async () => {
-    const parsed = parseFloat(amount.replace(/,/g, ''));
+    const parsed = parseFloat(amount);
     if (!parsed || parsed <= 0) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
       return;
@@ -120,7 +151,6 @@ export const TrackingScreen = () => {
     
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setConfirming(true);
-    Keyboard.dismiss();
     
     await addTransaction({
       type: txType,
@@ -134,157 +164,177 @@ export const TrackingScreen = () => {
 
     setTimeout(() => {
       setConfirming(false);
-      setAmount('');
+      setAmount('0');
       setNote('');
       setPhotoUri(null);
       navigation.goBack();
     }, 500);
   };
 
-  const isValid = parseFloat(amount.replace(/,/g, '')) > 0;
+  const isValid = parseFloat(amount) > 0;
   const mainColor = txType === 'expense' ? '#CF6679' : '#03DAC6';
+
+  const renderKey = (key: string, label?: string) => (
+    <TouchableOpacity
+      style={styles.keypadBtn}
+      onPress={() => handleKeyPress(key)}
+      activeOpacity={0.6}
+    >
+      {key === 'del' ? (
+        <Delete color="#FFFFFF" size={24} />
+      ) : (
+        <Text style={styles.keypadText}>{label || key}</Text>
+      )}
+    </TouchableOpacity>
+  );
 
   return (
     <AnimatedBackground>
-      <KeyboardAvoidingView
-        style={styles.container}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-          <Animated.View style={[styles.inner, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-            
-            {/* Top Row: Close */}
-            <View style={styles.topRow}>
-              <TouchableOpacity style={styles.closeBtn} onPress={() => navigation.goBack()} activeOpacity={0.7}>
-                <X color="#A0A0A0" size={22} />
-              </TouchableOpacity>
-            </View>
+      <Animated.View style={[styles.container, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+        
+        {/* Top Row */}
+        <View style={styles.topRow}>
+          <TouchableOpacity style={styles.closeBtn} onPress={() => navigation.goBack()} activeOpacity={0.7}>
+            <X color="#FFFFFF" size={22} />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.headerPill} onPress={onToggleType} activeOpacity={0.7}>
+            <View style={[styles.dot, { backgroundColor: mainColor }]} />
+            <Text style={styles.headerText}>
+              {txType === 'expense' ? 'Expense' : 'Income'}
+            </Text>
+            <ChevronDown color="#A0A0A0" size={16} />
+          </TouchableOpacity>
+          <View style={{ width: 40 }} /> 
+        </View>
 
-            {/* Header Switcher */}
-            <TouchableOpacity style={styles.headerPill} onPress={onToggleType} activeOpacity={0.7}>
-              <View style={[styles.dot, { backgroundColor: mainColor }]} />
-              <Text style={styles.headerText}>
-                {txType === 'expense' ? 'New Expense' : 'New Income'}
-              </Text>
-              <ChevronDown color="#A0A0A0" size={16} />
-            </TouchableOpacity>
+        {/* Display Area */}
+        <View style={styles.displayArea}>
+          <Text style={[styles.currencyLabel, { color: mainColor }]}>{currencySymbol}</Text>
+          <Animated.Text 
+            style={[
+              styles.amountText, 
+              { color: isValid ? '#FFFFFF' : 'rgba(255,255,255,0.4)', transform: [{ scale: amountScaleAnim }] }
+            ]}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+          >
+            {amount}
+          </Animated.Text>
+        </View>
 
-            <View style={styles.amountArea}>
-              <Text style={[styles.currency, { color: mainColor }]}>{currencySymbol}</Text>
-              <TextInput
-                ref={inputRef}
-                style={[styles.input, { color: isValid ? '#FFFFFF' : '#666' }]}
-                value={amount}
-                onChangeText={text => {
-                  Haptics.selectionAsync();
-                  const clean = text.replace(/[^0-9.]/g, '');
-                  setAmount(clean);
-                }}
-                keyboardType="decimal-pad"
-                autoFocus
-                placeholder="0.00"
-                placeholderTextColor="#333"
-                selectionColor={mainColor}
-              />
-            </View>
-
-            <View style={styles.categoriesArea}>
-              <Text style={styles.catLabel}>Select Category</Text>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.catScroll}
-                keyboardShouldPersistTaps="handled"
-              >
-                {categories.map(cat => {
-                  const isSelected = selectedCat === cat.label;
-                  return (
-                    <TouchableOpacity
-                      key={cat.id}
-                      onPress={() => {
-                        Haptics.selectionAsync();
-                        setSelectedCat(cat.label);
-                      }}
-                      activeOpacity={0.8}
+        {/* Categories */}
+        <View style={styles.categoriesWrapper}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.catScroll}
+          >
+            {categories.map(cat => {
+              const isSelected = selectedCat === cat.label;
+              return (
+                <TouchableOpacity
+                  key={cat.id}
+                  onPress={() => {
+                    Haptics.selectionAsync();
+                    setSelectedCat(cat.label);
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <View
+                    style={[
+                      styles.catChip,
+                      isSelected && {
+                        backgroundColor: `${cat.color}30`,
+                        borderColor: cat.color,
+                      },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.catText,
+                        isSelected && { color: cat.color, fontWeight: '700' },
+                      ]}
                     >
-                      <View
-                        style={[
-                          styles.catChip,
-                          isSelected && {
-                            backgroundColor: `${cat.color}25`,
-                            borderColor: cat.color,
-                          },
-                        ]}
-                      >
-                        <Text
-                          style={[
-                            styles.catText,
-                            isSelected && { color: cat.color, fontWeight: '700' },
-                          ]}
-                        >
-                          {cat.label}
-                        </Text>
-                      </View>
-                    </TouchableOpacity>
-                  );
-                })}
-              </ScrollView>
-            </View>
+                      {cat.label}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
 
-            {/* Extras Row: Note + Photo */}
-            <View style={styles.extrasRow}>
-              <View style={styles.noteRow}>
-                <TextInput
-                  style={styles.noteInput}
-                  value={note}
-                  onChangeText={setNote}
-                  placeholder="Add a note..."
-                  placeholderTextColor="#555"
-                  maxLength={100}
-                />
+        {/* Note & Photo */}
+        <View style={styles.extrasRow}>
+          <TextInput
+            style={styles.noteInput}
+            value={note}
+            onChangeText={setNote}
+            placeholder="Add a note..."
+            placeholderTextColor="rgba(255,255,255,0.3)"
+            maxLength={60}
+            returnKeyType="done"
+          />
+          <TouchableOpacity style={styles.photoBtn} onPress={pickPhoto} activeOpacity={0.7}>
+            {photoUri ? (
+              <View style={styles.photoPreviewWrap}>
+                <Image source={{ uri: photoUri }} style={styles.photoThumb} />
+                <TouchableOpacity
+                  style={styles.removePhoto}
+                  onPress={() => { Haptics.selectionAsync(); setPhotoUri(null); }}
+                >
+                  <Trash2 color="#FFF" size={12} />
+                </TouchableOpacity>
               </View>
-              <TouchableOpacity style={styles.photoBtn} onPress={pickPhoto} activeOpacity={0.7}>
-                {photoUri ? (
-                  <View style={styles.photoPreviewWrap}>
-                    <Image source={{ uri: photoUri }} style={styles.photoThumb} />
-                    <TouchableOpacity
-                      style={styles.removePhoto}
-                      onPress={() => { Haptics.selectionAsync(); setPhotoUri(null); }}
-                    >
-                      <Trash2 color="#FFF" size={12} />
-                    </TouchableOpacity>
-                  </View>
-                ) : (
-                  <View style={styles.photoBtnInner}>
-                    <Camera color="#A0A0A0" size={18} />
-                    <Text style={styles.photoBtnText}>Photo</Text>
-                  </View>
-                )}
-              </TouchableOpacity>
-            </View>
+            ) : (
+              <Camera color="#A0A0A0" size={20} />
+            )}
+          </TouchableOpacity>
+        </View>
 
-            {/* Bottom Actions */}
-            <View style={styles.bottomArea}>
-              <TouchableOpacity
-                style={[
-                  styles.confirmBtn,
-                  { backgroundColor: isValid ? mainColor : '#2C2C2C' },
-                  confirming && { opacity: 0.7 }
-                ]}
-                disabled={!isValid || confirming}
-                onPress={handleConfirm}
-                activeOpacity={0.8}
-              >
-                <Text style={[styles.confirmBtnText, { color: isValid ? '#121212' : '#666' }]}>
-                  {confirming ? 'Saving...' : 'Add Transaction'}
-                </Text>
-                {isValid && !confirming && <ArrowRight color="#121212" size={20} />}
-              </TouchableOpacity>
-            </View>
+        {/* Keypad */}
+        <View style={styles.keypadArea}>
+          <View style={styles.keypadRow}>
+            {renderKey('1')}
+            {renderKey('2')}
+            {renderKey('3')}
+          </View>
+          <View style={styles.keypadRow}>
+            {renderKey('4')}
+            {renderKey('5')}
+            {renderKey('6')}
+          </View>
+          <View style={styles.keypadRow}>
+            {renderKey('7')}
+            {renderKey('8')}
+            {renderKey('9')}
+          </View>
+          <View style={styles.keypadRow}>
+            {renderKey('.')}
+            {renderKey('0')}
+            {renderKey('del')}
+          </View>
+        </View>
 
-          </Animated.View>
-        </TouchableWithoutFeedback>
-      </KeyboardAvoidingView>
+        {/* Confirm Button */}
+        <View style={styles.bottomArea}>
+          <TouchableOpacity
+            style={[
+              styles.confirmBtn,
+              { backgroundColor: isValid ? mainColor : 'rgba(255,255,255,0.1)' },
+              confirming && { opacity: 0.7 }
+            ]}
+            disabled={!isValid || confirming}
+            onPress={handleConfirm}
+            activeOpacity={0.8}
+          >
+            <Text style={[styles.confirmBtnText, { color: isValid ? '#121212' : '#666' }]}>
+              {confirming ? 'Saving...' : 'Add Transaction'}
+            </Text>
+            {isValid && !confirming && <ArrowRight color="#121212" size={20} />}
+          </TouchableOpacity>
+        </View>
+      </Animated.View>
     </AnimatedBackground>
   );
 };
@@ -292,39 +342,34 @@ export const TrackingScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  inner: {
-    flex: 1,
-    paddingTop: 16,
-    justifyContent: 'space-between',
+    paddingTop: 50,
   },
   topRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 44,
-    marginBottom: 8,
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    marginBottom: 20,
   },
   closeBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#1E1E1E',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.08)',
     borderWidth: 1,
-    borderColor: '#2C2C2C',
+    borderColor: 'rgba(255,255,255,0.1)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   headerPill: {
-    alignSelf: 'center',
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1E1E1E',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 24,
     borderWidth: 1,
-    borderColor: '#2C2C2C',
+    borderColor: 'rgba(255,255,255,0.1)',
     gap: 8,
   },
   dot: {
@@ -333,57 +378,46 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   headerText: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 15,
+    fontWeight: '700',
     color: '#FFF',
   },
-  amountArea: {
-    flexDirection: 'row',
-    justifyContent: 'center',
+  displayArea: {
     alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 30,
+    flexDirection: 'row',
     paddingHorizontal: 20,
-    marginTop: 40,
   },
-  currency: {
-    fontSize: 48,
-    fontWeight: '300',
+  currencyLabel: {
+    fontSize: 36,
+    fontWeight: '400',
     marginRight: 8,
-    marginBottom: 8,
+    alignSelf: 'center',
   },
-  input: {
-    fontSize: 56,
-    fontWeight: '700',
-    letterSpacing: -1,
-    minWidth: 100,
-    padding: 0,
-    margin: 0,
+  amountText: {
+    fontSize: 64,
+    fontWeight: '800',
+    letterSpacing: -2,
+    textAlign: 'center',
   },
-  categoriesArea: {
-    marginTop: 24,
-  },
-  catLabel: {
-    fontSize: 11,
-    color: '#A0A0A0',
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 1.2,
-    marginLeft: 20,
-    marginBottom: 10,
+  categoriesWrapper: {
+    marginBottom: 20,
   },
   catScroll: {
-    paddingHorizontal: 16,
-    gap: 8,
+    paddingHorizontal: 20,
+    gap: 10,
   },
   catChip: {
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: 18,
+    paddingVertical: 12,
+    paddingHorizontal: 18,
+    borderRadius: 24,
     borderWidth: 1,
-    borderColor: '#2C2C2C',
-    backgroundColor: '#1E1E1E',
+    borderColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: 'rgba(255,255,255,0.05)',
   },
   catText: {
-    fontSize: 13,
+    fontSize: 14,
     color: '#A0A0A0',
     fontWeight: '600',
   },
@@ -391,76 +425,95 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 20,
-    gap: 10,
-    marginTop: 12,
-  },
-  noteRow: {
-    flex: 1,
-    backgroundColor: '#1E1E1E',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#2C2C2C',
-    paddingHorizontal: 12,
-    height: 40,
-    justifyContent: 'center',
+    gap: 12,
+    marginBottom: 24,
   },
   noteInput: {
-    fontSize: 13,
+    flex: 1,
+    height: 50,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+    paddingHorizontal: 16,
+    fontSize: 15,
     color: '#FFF',
   },
   photoBtn: {
-    height: 40,
-    borderRadius: 12,
-  },
-  photoBtnInner: {
-    height: 40,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: '#1E1E1E',
-    borderRadius: 12,
+    width: 50,
+    height: 50,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#2C2C2C',
-    paddingHorizontal: 12,
-  },
-  photoBtnText: {
-    fontSize: 12,
-    color: '#A0A0A0',
-    fontWeight: '600',
-  },
-  photoPreviewWrap: {
-    position: 'relative',
-  },
-  photoThumb: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-  },
-  removePhoto: {
-    position: 'absolute',
-    top: -4,
-    right: -4,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: '#CF6679',
+    borderColor: 'rgba(255,255,255,0.1)',
     justifyContent: 'center',
     alignItems: 'center',
   },
+  photoPreviewWrap: {
+    width: '100%',
+    height: '100%',
+  },
+  photoThumb: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 15,
+  },
+  removePhoto: {
+    position: 'absolute',
+    top: -6,
+    right: -6,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#CF6679',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#121212',
+  },
+  keypadArea: {
+    paddingHorizontal: 30,
+    paddingBottom: 10,
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  keypadRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  keypadBtn: {
+    width: width * 0.22,
+    height: 64,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 32,
+  },
+  keypadText: {
+    fontSize: 28,
+    color: '#FFF',
+    fontWeight: '500',
+  },
   bottomArea: {
-    padding: 20,
+    paddingHorizontal: 20,
     paddingBottom: 40,
+    paddingTop: 10,
   },
   confirmBtn: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 16,
-    borderRadius: 16,
-    gap: 8,
+    paddingVertical: 18,
+    borderRadius: 24,
+    gap: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 8,
   },
   confirmBtnText: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: '800',
   },
 });
