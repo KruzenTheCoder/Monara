@@ -1,17 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
-  TextInput,
-  Platform,
-  Image,
-  Animated,
-  Alert,
-  Dimensions,
-} from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Platform, Image, Animated, Alert, Dimensions } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
 import { useRoute, useNavigation } from '@react-navigation/native';
@@ -31,7 +19,7 @@ export const TrackingScreen = () => {
   const initialType = (route.params as any)?.type === 'income' ? 'income' : 'expense';
   const [txType, setTxType] = useState<'expense' | 'income'>(initialType);
   const [amount, setAmount] = useState('0');
-  const [selectedCat, setSelectedCat] = useState(expenseCategories[0].label);
+  const [selectedCat, setSelectedCat] = useState(initialType === 'expense' ? expenseCategories[0].label : incomeCategories[0].label);
   const [confirming, setConfirming] = useState(false);
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [note, setNote] = useState('');
@@ -68,7 +56,7 @@ export const TrackingScreen = () => {
     triggerAmountBounce();
     
     if (key === 'del') {
-      setAmount(prev => prev.length > 1 ? prev.slice(0, -1) : '0');
+      setAmount((prev: string) => prev.length > 1 ? prev.slice(0, -1) : '0');
       return;
     }
 
@@ -80,7 +68,7 @@ export const TrackingScreen = () => {
     // Max 7 digits total
     if (amount.replace('.', '').length >= 7) return;
 
-    setAmount(prev => {
+    setAmount((prev: string) => {
       if (prev === '0' && key !== '.') return key;
       return prev + key;
     });

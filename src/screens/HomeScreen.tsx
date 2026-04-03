@@ -2,7 +2,7 @@ import React, { useMemo, useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Animated, TouchableOpacity, Alert } from 'react-native';
 import { GlassBox } from '../components/GlassBox';
 import { AnimatedBackground } from '../components/AnimatedBackground';
-import { theme, formatCurrencyFull, getCategoryColor } from '../utils/theme';
+import { theme, getCategoryColor } from '../utils/theme';
 import { useFinancial } from '../context/FinancialContext';
 import { TrendingUp, TrendingDown, Zap, ArrowUpRight, ArrowDownRight, Sparkles, Settings, ChevronRight, Bell, MessageSquare } from 'lucide-react-native';
 import { format } from 'date-fns';
@@ -10,6 +10,7 @@ import { useNavigation } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
 
 import { CustomAlert } from '../components/CustomAlert';
+import { formatCurrencyFull } from '../utils/theme';
 
 export const HomeScreen = () => {
   const { transactions, balance, monthlyIncome, monthlyExpenses, savingsRate, user, deleteTransaction } = useFinancial();

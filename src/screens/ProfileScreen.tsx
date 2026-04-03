@@ -88,7 +88,7 @@ export const ProfileScreen = () => {
     );
   };
 
-  const renderCurrencyItem = ({ item, index }: { item: typeof CURRENCIES[0]; index: number }) => {
+  const renderCurrencyItem = ({ item }: { item: any }) => {
     const isSelected = item.code === user.currency;
     return (
       <TouchableOpacity

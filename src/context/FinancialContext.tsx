@@ -16,6 +16,7 @@ export interface UserData {
   total_points: number;
   last_log_date: string | null;
   currency: string;
+  theme: string;
   custom_categories: CategoryDef[];
 }
 
