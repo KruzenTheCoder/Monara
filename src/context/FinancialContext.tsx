@@ -18,6 +18,7 @@ export interface UserData {
   currency: string;
   theme: string;
   custom_categories: CategoryDef[];
+  tax_enabled?: boolean;
 }
 
 const DEFAULT_BUDGETS: Budget[] = [
@@ -52,6 +53,7 @@ interface FinancialContextType {
   updateBudgetLimit: (id: string, limit: number) => Promise<void>;
   addCustomCategory: (cat: CategoryDef) => Promise<void>;
   deleteCustomCategory: (id: string) => Promise<void>;
+  updateTransaction: (id: string, updates: Partial<Transaction>) => Promise<void>;
   expenseCategories: CategoryDef[];
   incomeCategories: CategoryDef[];
   balance: number;
@@ -59,6 +61,7 @@ interface FinancialContextType {
   monthlyExpenses: number;
   monthlySpendingByCategory: Record<string, number>;
   savingsRate: number;
+  taxForTransaction: (amount: number, category: string) => number;
 }
 
 const FinancialContext = createContext<FinancialContextType | undefined>(undefined);
@@ -171,6 +174,15 @@ export const FinancialProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     [transactions],
   );
 
+  const updateTransaction = useCallback(
+    async (id: string, updates: Partial<Transaction>) => {
+      const updated = transactions.map(t => (t.id === id ? { ...t, ...updates } : t));
+      setTransactions(updated);
+      await AsyncStorage.setItem(KEYS.TRANSACTIONS, JSON.stringify(updated));
+    },
+    [transactions],
+  );
+
   const updateUser = useCallback(
     async (data: Partial<UserData>) => {
       const updatedUser = { ...user, ...data };
@@ -244,6 +256,15 @@ export const FinancialProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     await AsyncStorage.setItem(KEYS.USER, JSON.stringify(updatedUser));
   }, [user]);
 
+  const taxForTransaction = useCallback(
+    (amount: number, category: string) => {
+      if (!user.tax_enabled) return 0;
+      // Stub logic for tax
+      return amount * 0.05;
+    },
+    [user.tax_enabled]
+  );
+
   return (
     <FinancialContext.Provider
       value={{
@@ -255,6 +276,7 @@ export const FinancialProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         changeCurrency,
         addTransaction,
         deleteTransaction,
+        updateTransaction,
         updateBudgetLimit,
         addCustomCategory,
         deleteCustomCategory,
@@ -265,6 +287,7 @@ export const FinancialProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         monthlyExpenses,
         monthlySpendingByCategory,
         savingsRate,
+        taxForTransaction,
       }}
     >
       {children}

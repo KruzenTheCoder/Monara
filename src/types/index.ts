@@ -5,6 +5,7 @@ export interface User {
   subscription_tier: 'Free' | 'Premium';
   current_streak: number;
   total_points: number;
+  tax_enabled?: boolean;
 }
 
 export interface Transaction {
@@ -17,6 +18,8 @@ export interface Transaction {
   note?: string;
   receipt_image_url?: string;
   is_manual_entry: boolean;
+  merchant_name?: string;
+  recurring?: { frequency: 'daily' | 'weekly' | 'monthly' | 'yearly' };
 }
 
 export interface Budget {

@@ -31,7 +31,7 @@ export const CategoryTransactionsScreen = () => {
   }, [transactions, category, monthOnly]);
 
   const total = useMemo(() => rows.reduce((s, t) => s + t.amount, 0), [rows]);
-  const totalTax = useMemo(() => rows.reduce((s, t) => s + taxForTransaction(t), 0), [rows, taxForTransaction]);
+  const totalTax = useMemo(() => rows.reduce((s, t) => s + taxForTransaction(t.amount, t.category), 0), [rows, taxForTransaction]);
 
   const catColor = getCategoryColor(category);
 
@@ -85,7 +85,7 @@ export const CategoryTransactionsScreen = () => {
           </GlassBox>
         ) : (
           rows.map(t => {
-            const tax = taxForTransaction(t);
+            const tax = taxForTransaction(t.amount, t.category);
             return (
               <Pressable
                 key={t.id}
