@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { useNavigation } from '@react-navigation/native';
+import { format } from 'date-fns';
 import {
   View,
   Text,
@@ -14,11 +16,13 @@ import { GlassBox } from '../components/GlassBox';
 import { AnimatedBackground } from '../components/AnimatedBackground';
 import { theme, formatCurrencyFull, getCategoryColor } from '../utils/theme';
 import { useFinancial } from '../context/FinancialContext';
-import { Edit3, X, Check, AlertTriangle } from 'lucide-react-native';
+import { Edit3, X, Check, AlertTriangle, ChevronRight } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 
 export const BudgetScreen = () => {
-  const { budgets, monthlySpendingByCategory, updateBudgetLimit } = useFinancial();
+  const navigation = useNavigation<any>();
+  const { budgets, monthlySpendingByCategory, updateBudgetLimit, upcomingRecurringBills, user } = useFinancial();
+  const currency = user.currency || 'USD';
   const [editingBudget, setEditingBudget] = useState<{ id: string; category: string; current: number } | null>(null);
   const [editValue, setEditValue] = useState('');
 
@@ -47,12 +51,6 @@ export const BudgetScreen = () => {
     await updateBudgetLimit(editingBudget.id, val);
     setEditingBudget(null);
   };
-
-  const UPCOMING_BILLS = [
-    { name: 'Netflix', amount: 15.99, day: 15 },
-    { name: 'Spotify', amount: 9.99, day: 18 },
-    { name: 'iCloud Storage', amount: 2.99, day: 22 },
-  ];
 
   return (
     <AnimatedBackground>
@@ -109,11 +107,21 @@ export const BudgetScreen = () => {
           return (
             <GlassBox key={budget.id} style={styles.budgetCard}>
               <View style={styles.cardTop}>
-                <View style={styles.catLabelRow}>
-                  <View style={[styles.catIndicator, { backgroundColor: catColor }]} />
-                  <Text style={styles.catName}>{budget.category}</Text>
-                  {isOver && <AlertTriangle color={theme.colors.status.red} size={14} />}
-                </View>
+                <TouchableOpacity
+                  style={styles.catNav}
+                  activeOpacity={0.85}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    navigation.navigate('CategoryTransactions', { category: budget.category });
+                  }}
+                >
+                  <View style={styles.catLabelRow}>
+                    <View style={[styles.catIndicator, { backgroundColor: catColor }]} />
+                    <Text style={styles.catName}>{budget.category}</Text>
+                    {isOver && <AlertTriangle color={theme.colors.status.red} size={14} />}
+                  </View>
+                  <ChevronRight color="rgba(255,255,255,0.35)" size={18} />
+                </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => openEdit(budget.id, budget.category, budget.monthly_limit)}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
@@ -148,22 +156,35 @@ export const BudgetScreen = () => {
           );
         })}
 
-        {/* Upcoming Bills */}
-        <Text style={styles.sectionTitle}>Upcoming Bills</Text>
+        {/* Upcoming Bills — from recurring transactions */}
+        <Text style={styles.sectionTitle}>Upcoming bills</Text>
         <GlassBox style={styles.billsCard}>
-          {UPCOMING_BILLS.map((bill, i) => (
-            <View key={i} style={[styles.billRow, i < UPCOMING_BILLS.length - 1 && styles.billDivider]}>
-              <View style={styles.billDateBox}>
-                <Text style={styles.billDay}>{bill.day}</Text>
-                <Text style={styles.billMonth}>{new Date(2025, new Date().getMonth(), bill.day).toLocaleString('default', { month: 'short' }).toUpperCase()}</Text>
+          {upcomingRecurringBills.length === 0 ? (
+            <Text style={[theme.typography.label, { paddingVertical: 8 }]}>
+              No recurring expenses yet. Add a transaction and enable “Recurring payment”.
+            </Text>
+          ) : (
+            upcomingRecurringBills.map((bill, i) => (
+              <View
+                key={bill.id}
+                style={[styles.billRow, i < upcomingRecurringBills.length - 1 && styles.billDivider]}
+              >
+                <View style={styles.billDateBox}>
+                  <Text style={styles.billDay}>{format(bill.nextDue, 'd')}</Text>
+                  <Text style={styles.billMonth}>{format(bill.nextDue, 'MMM').toUpperCase()}</Text>
+                </View>
+                <View style={styles.billInfo}>
+                  <Text style={theme.typography.body} numberOfLines={1}>
+                    {bill.name}
+                  </Text>
+                  <Text style={theme.typography.label}>
+                    {bill.frequency} · {bill.category}
+                  </Text>
+                </View>
+                <Text style={styles.billAmount}>{formatCurrencyFull(bill.amount, currency)}</Text>
               </View>
-              <View style={styles.billInfo}>
-                <Text style={theme.typography.body}>{bill.name}</Text>
-                <Text style={theme.typography.label}>Recurring subscription</Text>
-              </View>
-              <Text style={styles.billAmount}>{formatCurrencyFull(bill.amount)}</Text>
-            </View>
-          ))}
+            ))
+          )}
         </GlassBox>
       </ScrollView>
 
@@ -269,6 +290,14 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 6,
+    gap: 8,
+  },
+  catNav: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    minWidth: 0,
   },
   catLabelRow: {
     flexDirection: 'row',

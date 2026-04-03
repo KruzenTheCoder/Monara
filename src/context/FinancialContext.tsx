@@ -3,6 +3,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { format, isThisMonth } from 'date-fns';
 import { Transaction, Budget } from '../types';
 import { convertAmount } from '../utils/currencies';
+import { computeExpenseTax, TaxMode } from '../utils/tax';
+import { buildUpcomingBills, UpcomingBill } from '../utils/recurringBills';
 
 const KEYS = {
   TRANSACTIONS: '@monara:transactions',
@@ -17,6 +19,12 @@ export interface UserData {
   last_log_date: string | null;
   currency: string;
   theme: string;
+  /** ISO 3166-1 alpha-2 — drives estimated tax rates. */
+  country_code: string;
+  /** When true, show estimated tax on expenses (planning only). */
+  tax_enabled: boolean;
+  /** How logged amounts relate to tax (US-style vs VAT-inclusive). */
+  tax_mode: TaxMode;
 }
 
 const DEFAULT_BUDGETS: Budget[] = [
@@ -36,6 +44,9 @@ const DEFAULT_USER: UserData = {
   last_log_date: null,
   currency: 'USD',
   theme: 'default',
+  country_code: 'US',
+  tax_enabled: false,
+  tax_mode: 'exclusive',
 };
 
 interface FinancialContextType {
@@ -46,6 +57,7 @@ interface FinancialContextType {
   updateUser: (data: Partial<UserData>) => Promise<void>;
   changeCurrency: (newCurrency: string) => Promise<void>;
   addTransaction: (t: Omit<Transaction, 'id' | 'user_id'>) => Promise<void>;
+  updateTransaction: (id: string, patch: Partial<Omit<Transaction, 'id' | 'user_id'>>) => Promise<void>;
   deleteTransaction: (id: string) => Promise<void>;
   updateBudgetLimit: (id: string, limit: number) => Promise<void>;
   balance: number;
@@ -53,6 +65,10 @@ interface FinancialContextType {
   monthlyExpenses: number;
   monthlySpendingByCategory: Record<string, number>;
   savingsRate: number;
+  upcomingRecurringBills: UpcomingBill[];
+  /** Sum of estimated tax on this month's expenses (if tax_enabled). */
+  monthlyEstimatedTax: number;
+  taxForTransaction: (t: Transaction) => number;
 }
 
 const FinancialContext = createContext<FinancialContextType | undefined>(undefined);
@@ -67,9 +83,10 @@ export const FinancialProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   // Apply theme when user changes
   useEffect(() => {
-    if (user && user.theme && appTheme.themes[user.theme]) {
-      appTheme.colors.accent = appTheme.themes[user.theme].primary;
-      appTheme.colors.status.green = appTheme.themes[user.theme].secondary;
+    if (user && user.theme && appTheme.colors.themes[user.theme]) {
+      const selected = appTheme.colors.themes[user.theme];
+      appTheme.colors.accent = selected.primary;
+      appTheme.colors.status.green = selected.secondary;
     }
   }, [user?.theme]);
 
@@ -133,6 +150,23 @@ export const FinancialProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     return Math.max(0, ((monthlyIncome - monthlyExpenses) / monthlyIncome) * 100);
   }, [monthlyIncome, monthlyExpenses]);
 
+  const taxForTransaction = useCallback(
+    (t: Transaction) => {
+      if (!user.tax_enabled || t.type !== 'expense') return 0;
+      return computeExpenseTax(t.amount, t.category, user.country_code, user.tax_mode);
+    },
+    [user.tax_enabled, user.country_code, user.tax_mode],
+  );
+
+  const monthlyEstimatedTax = useMemo(() => {
+    if (!user.tax_enabled) return 0;
+    return transactions
+      .filter(t => t.type === 'expense' && isThisMonth(new Date(t.date)))
+      .reduce((sum, t) => sum + computeExpenseTax(t.amount, t.category, user.country_code, user.tax_mode), 0);
+  }, [transactions, user.tax_enabled, user.country_code, user.tax_mode]);
+
+  const upcomingRecurringBills = useMemo(() => buildUpcomingBills(transactions), [transactions]);
+
   const addTransaction = useCallback(
     async (t: Omit<Transaction, 'id' | 'user_id'>) => {
       const newTx: Transaction = { ...t, id: `tx_${Date.now()}`, user_id: 'local' };
@@ -154,6 +188,18 @@ export const FinancialProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       }
     },
     [transactions, user],
+  );
+
+  const updateTransaction = useCallback(
+    async (id: string, patch: Partial<Omit<Transaction, 'id' | 'user_id'>>) => {
+      const updated = transactions.map(t => {
+        if (t.id !== id) return t;
+        return { ...t, ...patch } as Transaction;
+      });
+      setTransactions(updated);
+      await AsyncStorage.setItem(KEYS.TRANSACTIONS, JSON.stringify(updated));
+    },
+    [transactions],
   );
 
   const deleteTransaction = useCallback(
@@ -226,6 +272,7 @@ export const FinancialProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         updateUser,
         changeCurrency,
         addTransaction,
+        updateTransaction,
         deleteTransaction,
         updateBudgetLimit,
         balance,
@@ -233,6 +280,9 @@ export const FinancialProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         monthlyExpenses,
         monthlySpendingByCategory,
         savingsRate,
+        upcomingRecurringBills,
+        monthlyEstimatedTax,
+        taxForTransaction,
       }}
     >
       {children}

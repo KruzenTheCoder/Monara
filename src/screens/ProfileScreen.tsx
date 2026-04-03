@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  TextInput, Modal, FlatList, Animated, Alert,
+  TextInput, Modal, Animated, Alert, Switch,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { AnimatedBackground } from '../components/AnimatedBackground';
@@ -9,6 +9,8 @@ import { GlassBox } from '../components/GlassBox';
 import { useFinancial } from '../context/FinancialContext';
 import { theme } from '../utils/theme';
 import { CURRENCIES, getCurrencyInfo } from '../utils/currencies';
+import { COUNTRIES, getCountryInfo } from '../utils/countries';
+import { defaultTaxModeForCountry } from '../utils/tax';
 import { Check, ChevronLeft, ChevronRight, User, Target, Award, Search, X, Palette } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 
@@ -18,7 +20,7 @@ export const ProfileScreen = () => {
 
   const [name, setName] = useState(user.display_name);
   const [saving, setSaving] = useState(false);
-  const [showCurrencyModal, setShowCurrencyModal] = useState(false);
+  const [showRegionModal, setShowRegionModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showThemeModal, setShowThemeModal] = useState(false);
 
@@ -33,8 +35,9 @@ export const ProfileScreen = () => {
     ]).start();
   }, []);
 
-  const currentCurrency = getCurrencyInfo(user.currency || 'USD');
-  const currentTheme = theme.themes[user.theme || 'default'];
+  const currentCurrency = getCurrencyInfo(user?.currency || 'USD') || { flag: '🇺🇸', name: 'US Dollar', code: 'USD', symbol: '$' };
+  const currentCountry = getCountryInfo(user?.country_code);
+  const currentTheme = theme?.colors?.themes?.[user?.theme || 'default'] || theme?.colors?.themes?.['default'];
 
   const filteredCurrencies = useMemo(() => {
     if (!searchQuery.trim()) return CURRENCIES;
@@ -65,9 +68,19 @@ export const ProfileScreen = () => {
     setShowThemeModal(false);
   };
 
+  const handleCountrySelect = async (code: string) => {
+    if (code === user.country_code) return;
+    Haptics.selectionAsync();
+    await updateUser({
+      country_code: code,
+      tax_mode: defaultTaxModeForCountry(code),
+    });
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  };
+
   const handleCurrencySelect = (code: string) => {
     if (code === user.currency) {
-      setShowCurrencyModal(false);
+      setShowRegionModal(false);
       return;
     }
     const info = getCurrencyInfo(code);
@@ -79,7 +92,8 @@ export const ProfileScreen = () => {
         {
           text: 'Convert & Switch',
           onPress: async () => {
-            setShowCurrencyModal(false);
+            setShowRegionModal(false);
+            setSearchQuery('');
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             await changeCurrency(code);
           },
@@ -109,7 +123,7 @@ export const ProfileScreen = () => {
     );
   };
 
-  const themeKeys = Object.keys(theme.themes);
+  const themeKeys = theme?.colors?.themes ? Object.keys(theme.colors.themes) : [];
 
   return (
     <AnimatedBackground>
@@ -126,23 +140,41 @@ export const ProfileScreen = () => {
         showsVerticalScrollIndicator={false}
         style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}
       >
-        {/* User Stats Summary */}
-        <View style={styles.statsRow}>
-          <GlassBox style={styles.statBox}>
-            <Award color="#FBBF24" size={24} />
-            <Text style={styles.statBoxVal}>{user.total_points}</Text>
-            <Text style={theme.typography.label}>Points</Text>
-          </GlassBox>
-          <GlassBox style={styles.statBox}>
-            <Target color={theme.colors.accent} size={24} />
-            <Text style={styles.statBoxVal}>{user.current_streak}</Text>
-            <Text style={theme.typography.label}>Day Streak</Text>
-          </GlassBox>
-          <GlassBox style={styles.statBox}>
-            <User color={theme.colors.status.green} size={24} />
-            <Text style={styles.statBoxVal}>{transactions.length}</Text>
-            <Text style={theme.typography.label}>Entries</Text>
-          </GlassBox>
+        {/* User Stats — compact dashboard-style tiles */}
+        <View style={styles.profileGrid}>
+          <View style={styles.profileGridCol}>
+            <GlassBox style={styles.profileStatTile}>
+              <View style={[styles.profileStatIcon, { backgroundColor: 'rgba(251, 191, 36, 0.12)' }]}>
+                <Award color="#FBBF24" size={18} />
+              </View>
+              <Text style={styles.profileStatLabel}>Points</Text>
+              <Text style={styles.profileStatVal} numberOfLines={1} adjustsFontSizeToFit>
+                {user.total_points.toLocaleString()}
+              </Text>
+            </GlassBox>
+          </View>
+          <View style={styles.profileGridCol}>
+            <GlassBox style={styles.profileStatTile}>
+              <View style={[styles.profileStatIcon, { backgroundColor: 'rgba(187, 134, 252, 0.12)' }]}>
+                <Target color={theme.colors.accent} size={18} />
+              </View>
+              <Text style={styles.profileStatLabel}>Streak</Text>
+              <Text style={styles.profileStatVal} numberOfLines={1}>
+                {user.current_streak}
+              </Text>
+            </GlassBox>
+          </View>
+          <View style={styles.profileGridCol}>
+            <GlassBox style={styles.profileStatTile}>
+              <View style={[styles.profileStatIcon, { backgroundColor: 'rgba(52, 199, 89, 0.12)' }]}>
+                <User color={theme.colors.status.green} size={18} />
+              </View>
+              <Text style={styles.profileStatLabel}>Entries</Text>
+              <Text style={styles.profileStatVal} numberOfLines={1}>
+                {transactions.length}
+              </Text>
+            </GlassBox>
+          </View>
         </View>
 
         {/* Profile Info */}
@@ -171,18 +203,50 @@ export const ProfileScreen = () => {
           </GlassBox>
         </TouchableOpacity>
 
-        {/* Currency Selection - tap to open modal */}
-        <Text style={styles.sectionTitle}>Currency</Text>
-        <TouchableOpacity activeOpacity={0.7} onPress={() => setShowCurrencyModal(true)}>
-          <GlassBox style={styles.currencyCard}>
-            <Text style={styles.currencyCardFlag}>{currentCurrency.flag}</Text>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.currencyCardName}>{currentCurrency.name}</Text>
-              <Text style={styles.currencyCardCode}>{currentCurrency.code} · {currentCurrency.symbol}</Text>
+        {/* Currency + country (tax region) — single control */}
+        <Text style={styles.sectionTitle}>Currency & region</Text>
+        <TouchableOpacity activeOpacity={0.7} onPress={() => setShowRegionModal(true)}>
+          <GlassBox style={styles.regionSummaryCard}>
+            <View style={styles.regionSummaryInner}>
+              <View style={styles.regionSummaryRow}>
+                <Text style={styles.regionEmoji}>{currentCurrency.flag}</Text>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={styles.regionPrimary}>{currentCurrency.code} · {currentCurrency.symbol}</Text>
+                  <Text style={styles.regionSecondary} numberOfLines={1}>
+                    {currentCurrency.name}
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.regionHairline} />
+              <View style={styles.regionSummaryRow}>
+                <Text style={styles.regionEmoji}>{currentCountry.flag}</Text>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={styles.regionPrimary}>{currentCountry.name}</Text>
+                  <Text style={styles.regionSecondary}>Tax & estimates</Text>
+                </View>
+              </View>
             </View>
-            <ChevronRight color="#555" size={20} />
+            <ChevronRight color="rgba(255,255,255,0.35)" size={20} />
           </GlassBox>
         </TouchableOpacity>
+        <GlassBox style={styles.taxRow}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.currencyCardName}>Estimated expense tax</Text>
+            <Text style={styles.currencyCardCode}>
+              Planning-only; uses country + category. {user.tax_enabled ? 'On' : 'Off'}
+            </Text>
+          </View>
+          <Switch
+            value={!!user.tax_enabled}
+            onValueChange={async v => {
+              Haptics.selectionAsync();
+              await updateUser({ tax_enabled: v });
+            }}
+            trackColor={{ false: 'rgba(255,255,255,0.12)', true: 'rgba(187,134,252,0.45)' }}
+            thumbColor={user.tax_enabled ? theme.colors.accent : '#8E8E93'}
+            ios_backgroundColor="rgba(255,255,255,0.12)"
+          />
+        </GlassBox>
 
         <View style={styles.spacer} />
 
@@ -208,7 +272,7 @@ export const ProfileScreen = () => {
             </View>
             <ScrollView contentContainerStyle={{ paddingBottom: 40, paddingHorizontal: 16 }}>
               {themeKeys.map((key) => {
-                const t = theme.themes[key];
+                const t = theme.colors.themes[key];
                 const isSelected = key === (user.theme || 'default');
                 return (
                   <TouchableOpacity
@@ -231,47 +295,73 @@ export const ProfileScreen = () => {
         </View>
       </Modal>
 
-      {/* Currency Picker Modal */}
-      <Modal visible={showCurrencyModal} animationType="slide" transparent statusBarTranslucent>
+      {/* Currency & region (country + currency) */}
+      <Modal visible={showRegionModal} animationType="slide" transparent statusBarTranslucent>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            {/* Modal Header */}
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Select Currency</Text>
-              <TouchableOpacity style={styles.modalClose} onPress={() => { setShowCurrencyModal(false); setSearchQuery(''); }}>
+              <Text style={styles.modalTitle}>Currency & region</Text>
+              <TouchableOpacity
+                style={styles.modalClose}
+                onPress={() => {
+                  setShowRegionModal(false);
+                  setSearchQuery('');
+                }}
+              >
                 <X color="#A0A0A0" size={22} />
               </TouchableOpacity>
             </View>
 
-            {/* Search */}
-            <View style={styles.searchRow}>
-              <Search color="#666" size={18} />
-              <TextInput
-                style={styles.searchInput}
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-                placeholder="Search currencies..."
-                placeholderTextColor="#555"
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-              {searchQuery.length > 0 && (
-                <TouchableOpacity onPress={() => setSearchQuery('')}>
-                  <X color="#666" size={16} />
-                </TouchableOpacity>
-              )}
-            </View>
-
-            {/* List */}
-            <FlatList
-              data={filteredCurrencies}
-              keyExtractor={item => item.code}
-              renderItem={renderCurrencyItem}
-              showsVerticalScrollIndicator={false}
+            <ScrollView
               keyboardShouldPersistTaps="handled"
-              ItemSeparatorComponent={() => <View style={styles.separator} />}
-              contentContainerStyle={{ paddingBottom: 40 }}
-            />
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ paddingBottom: 32 }}
+            >
+              <Text style={styles.modalSectionLabel}>Country</Text>
+              {COUNTRIES.map(c => {
+                const isSelected = c.code === user.country_code;
+                return (
+                  <TouchableOpacity
+                    key={c.code}
+                    style={[styles.currencyRow, isSelected && styles.currencyRowSelected]}
+                    onPress={() => handleCountrySelect(c.code)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.flag}>{c.flag}</Text>
+                    <View style={styles.currencyMid}>
+                      <Text style={[styles.currencyName, isSelected && { color: theme.colors.accent }]}>{c.name}</Text>
+                      <Text style={styles.currencyCode}>{c.code}</Text>
+                    </View>
+                    {isSelected && <Check color={theme.colors.accent} size={20} />}
+                  </TouchableOpacity>
+                );
+              })}
+
+              <Text style={[styles.modalSectionLabel, { marginTop: 20 }]}>Currency</Text>
+              <View style={[styles.searchRow, { marginHorizontal: 16 }]}>
+                <Search color="#666" size={18} />
+                <TextInput
+                  style={styles.searchInput}
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                  placeholder="Search currencies..."
+                  placeholderTextColor="#555"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+                {searchQuery.length > 0 && (
+                  <TouchableOpacity onPress={() => setSearchQuery('')}>
+                    <X color="#666" size={16} />
+                  </TouchableOpacity>
+                )}
+              </View>
+              {filteredCurrencies.map((item, index) => (
+                <View key={item.code}>
+                  {index > 0 && <View style={styles.separator} />}
+                  {renderCurrencyItem({ item, index })}
+                </View>
+              ))}
+            </ScrollView>
           </View>
         </View>
       </Modal>
@@ -303,22 +393,87 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingBottom: 60,
   },
-  statsRow: {
+  profileGrid: {
     flexDirection: 'row',
-    gap: 12,
-    marginBottom: 24,
+    gap: 10,
+    marginBottom: 20,
+    alignItems: 'stretch',
   },
-  statBox: {
+  profileGridCol: {
     flex: 1,
-    alignItems: 'center',
-    paddingVertical: 16,
-    gap: 4,
+    minWidth: 0,
   },
-  statBoxVal: {
-    fontSize: 20,
-    fontWeight: 'bold',
+  profileStatTile: {
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 6,
+    minHeight: 0,
+  },
+  profileStatIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  profileStatLabel: {
+    fontSize: 11,
+    color: '#A0A0A0',
+    fontWeight: '600',
+    marginBottom: 3,
+  },
+  profileStatVal: {
+    fontSize: 16,
+    fontWeight: '700',
     color: '#FFF',
-    marginTop: 4,
+    textAlign: 'center',
+    width: '100%',
+  },
+  regionSummaryCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 12,
+    paddingVertical: 4,
+  },
+  regionSummaryInner: {
+    flex: 1,
+    minWidth: 0,
+  },
+  regionSummaryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  regionEmoji: {
+    fontSize: 22,
+  },
+  regionPrimary: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#FFF',
+  },
+  regionSecondary: {
+    fontSize: 12,
+    color: '#A0A0A0',
+    marginTop: 2,
+  },
+  regionHairline: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    marginVertical: 10,
+  },
+  modalSectionLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#A0A0A0',
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+    marginBottom: 8,
+    marginHorizontal: 16,
   },
   sectionTitle: {
     fontSize: 13,
@@ -342,6 +497,12 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
   },
   currencyCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    marginBottom: 24,
+  },
+  taxRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 14,
@@ -490,3 +651,4 @@ const styles = StyleSheet.create({
     marginLeft: 60,
   },
 });
+

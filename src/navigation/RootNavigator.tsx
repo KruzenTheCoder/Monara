@@ -267,7 +267,7 @@ const AddPopup = ({
     <Modal
       visible={visible}
       transparent
-      animationType="none"
+      animationType="fade"
       statusBarTranslucent
       onRequestClose={onClose}
     >
@@ -279,7 +279,7 @@ const AddPopup = ({
             { opacity: backdropOpacity }
           ]}
         >
-          <BlurView intensity={30} tint="dark" style={StyleSheet.absoluteFill} />
+          <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFill} />
           <Pressable
             style={[StyleSheet.absoluteFill, styles.backdrop]}
             onPress={onClose}
@@ -300,58 +300,52 @@ const AddPopup = ({
               },
             ]}
           >
-            {/* Glow effect */}
-            <Animated.View
-              style={[
-                styles.glowContainer,
-                { transform: [{ scale: pulseAnim }] }
-              ]}
-            >
-              <LinearGradient
-                colors={['rgba(124, 58, 237, 0.4)', 'rgba(124, 58, 237, 0)']}
-                style={styles.glow}
-              />
-            </Animated.View>
-
-            {/* Title */}
-            <View style={styles.titleContainer}>
-              <LinearGradient
-                colors={['#7C3AED', '#A78BFA']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.titleGradientLine}
-              />
-              <Text style={styles.popupTitle}>Add Transaction</Text>
-              <LinearGradient
-                colors={['#A78BFA', '#7C3AED']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.titleGradientLine}
-              />
-            </View>
-
-            {/* Action Grid - Two buttons side by side */}
-            <View style={styles.actionsRow}>
-              {quickActions.map((action, index) => (
-                <ActionButton
-                  key={action.id}
-                  item={action}
-                  index={index}
-                  isVisible={visible}
-                  onPress={() => onActionPress(action.type as 'expense' | 'income')}
+            <View style={styles.popupInner}>
+              {/* Glow effect */}
+              <Animated.View
+                style={[
+                  styles.glowContainer,
+                  { transform: [{ scale: pulseAnim }] }
+                ]}
+              >
+                <LinearGradient
+                  colors={['rgba(167, 139, 250, 0.25)', 'rgba(124, 58, 237, 0)']}
+                  style={styles.glow}
                 />
-              ))}
+              </Animated.View>
+
+              {/* Title Section */}
+              <View style={styles.titleSection}>
+                <View style={styles.titleLine} />
+                <Text style={styles.popupTitle}>Quick Action</Text>
+                <View style={styles.titleLine} />
+              </View>
+
+              <Text style={styles.popupSubtitle}>What would you like to log?</Text>
+
+              {/* Action Grid */}
+              <View style={styles.actionsRow}>
+                {quickActions.map((action, index) => (
+                  <ActionButton
+                    key={action.id}
+                    item={action}
+                    index={index}
+                    isVisible={visible}
+                    onPress={() => onActionPress(action.type as 'expense' | 'income')}
+                  />
+                ))}
+              </View>
             </View>
           </Animated.View>
 
-          {/* Close Button - Inside the wrapper, positioned below content */}
+          {/* Close Button Pin */}
           <Animated.View
             style={[
               styles.closeButtonContainer,
               {
                 opacity: containerOpacity,
-                transform: [{ rotate: closeRotation }],
-                marginBottom: insets.bottom + 20,
+                transform: [{ rotate: closeRotation }, { scale: containerScale }],
+                marginBottom: insets.bottom + 16,
               },
             ]}
           >
@@ -361,12 +355,10 @@ const AddPopup = ({
               activeOpacity={0.8}
             >
               <LinearGradient
-                colors={['#7C3AED', '#A78BFA']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
+                colors={['#1E1E1E', '#121212']}
                 style={styles.closeButtonGradient}
               >
-                <X color="#FFFFFF" size={24} strokeWidth={2} />
+                <X color="#A0A0A0" size={24} strokeWidth={2.5} />
               </LinearGradient>
             </TouchableOpacity>
           </Animated.View>
@@ -595,19 +587,27 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   popupContent: {
-    width: SCREEN_WIDTH - 48,
-    backgroundColor: 'rgba(26, 26, 31, 0.95)',
-    borderRadius: 28,
-    padding: 28,
+    width: SCREEN_WIDTH - 64,
+    backgroundColor: '#1E1E1E',
+    borderRadius: 32,
     borderWidth: 1,
-    borderColor: 'rgba(124, 58, 237, 0.3)',
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    overflow: 'visible',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 20 },
+    shadowOpacity: 0.5,
+    shadowRadius: 30,
+    elevation: 20,
+  },
+  popupInner: {
+    padding: 32,
+    alignItems: 'center',
     overflow: 'hidden',
+    borderRadius: 32,
   },
   glowContainer: {
     position: 'absolute',
-    top: -100,
-    left: '50%',
-    marginLeft: -150,
+    top: -150,
     width: 300,
     height: 300,
   },
@@ -616,77 +616,72 @@ const styles = StyleSheet.create({
     height: '100%',
     borderRadius: 150,
   },
-  titleContainer: {
+  titleSection: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 28,
+    marginBottom: 8,
     gap: 12,
   },
-  titleGradientLine: {
-    height: 2,
-    width: 40,
-    borderRadius: 1,
+  titleLine: {
+    height: 1,
+    flex: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
   },
   popupTitle: {
-    fontSize: 20,
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#A78BFA',
+    textTransform: 'uppercase',
+    letterSpacing: 2,
+  },
+  popupSubtitle: {
+    fontSize: 22,
     fontWeight: '700',
     color: '#FFFFFF',
-    letterSpacing: 0.5,
+    marginBottom: 32,
+    textAlign: 'center',
   },
   actionsRow: {
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: 24,
+    gap: 32,
+    width: '100%',
   },
   actionItem: {
-    alignItems: 'center',
     flex: 1,
+    alignItems: 'center',
   },
   actionItemButton: {
     alignItems: 'center',
-    gap: 12,
+    width: '100%',
   },
   actionItemGradient: {
-    width: 72,
-    height: 72,
-    borderRadius: 20,
+    width: 80,
+    height: 80,
+    borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 6,
-      },
-    }),
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
   },
   actionItemLabel: {
     fontSize: 13,
     fontWeight: '600',
-    color: 'rgba(255, 255, 255, 0.9)',
+    color: '#FFFFFF',
     textAlign: 'center',
   },
   closeButtonContainer: {
     marginTop: 24,
-    alignSelf: 'center',
   },
   closeButton: {
-    ...Platform.select({
-      ios: {
-        shadowColor: '#7C3AED',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.5,
-        shadowRadius: 12,
-      },
-      android: {
-        elevation: 10,
-      },
-    }),
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 10,
   },
   closeButtonGradient: {
     width: 56,
@@ -694,6 +689,8 @@ const styles = StyleSheet.create({
     borderRadius: 28,
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   profileBtn: {
     width: 36,

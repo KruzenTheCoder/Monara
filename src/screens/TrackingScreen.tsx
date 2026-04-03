@@ -11,7 +11,11 @@ import {
   Animated,
   Alert,
   Dimensions,
+  Keyboard,
+  Switch,
+  KeyboardAvoidingView,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
 import { useRoute, useNavigation } from '@react-navigation/native';
@@ -19,13 +23,14 @@ import { AnimatedBackground } from '../components/AnimatedBackground';
 import { theme, getCurrencySymbol } from '../utils/theme';
 import { useFinancial } from '../context/FinancialContext';
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from '../types';
-import { ChevronDown, ArrowRight, X, Camera, Trash2, Delete } from 'lucide-react-native';
+import { ChevronDown, ArrowRight, X, Camera, Trash2, Delete, RefreshCcw } from 'lucide-react-native';
 
 const { width } = Dimensions.get('window');
 
 export const TrackingScreen = () => {
   const route = useRoute();
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
   const { addTransaction, user } = useFinancial();
 
   const initialType = (route.params as any)?.type === 'income' ? 'income' : 'expense';
@@ -34,7 +39,10 @@ export const TrackingScreen = () => {
   const [selectedCat, setSelectedCat] = useState(EXPENSE_CATEGORIES[0].label);
   const [confirming, setConfirming] = useState(false);
   const [photoUri, setPhotoUri] = useState<string | null>(null);
+  const [merchantName, setMerchantName] = useState('');
   const [note, setNote] = useState('');
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [recurringFreq, setRecurringFreq] = useState<'daily' | 'weekly' | 'monthly' | 'yearly'>('monthly');
 
   // Entrance animation
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -49,6 +57,7 @@ export const TrackingScreen = () => {
   }, []);
 
   const triggerAmountBounce = () => {
+    Keyboard.dismiss();
     amountScaleAnim.setValue(1.1);
     Animated.spring(amountScaleAnim, {
       toValue: 1,
@@ -158,13 +167,16 @@ export const TrackingScreen = () => {
       category: selectedCat,
       date: new Date().toISOString(),
       is_manual_entry: true,
+      ...(merchantName.trim() ? { merchant_name: merchantName.trim() } : {}),
       ...(note.trim() ? { note: note.trim() } : {}),
       ...(photoUri ? { receipt_image_url: photoUri } : {}),
+      ...(isRecurring ? { recurring: { frequency: recurringFreq } } : {}),
     });
 
     setTimeout(() => {
       setConfirming(false);
       setAmount('0');
+      setMerchantName('');
       setNote('');
       setPhotoUri(null);
       navigation.goBack();
@@ -181,7 +193,7 @@ export const TrackingScreen = () => {
       activeOpacity={0.6}
     >
       {key === 'del' ? (
-        <Delete color="#FFFFFF" size={24} />
+        <Delete color="#FFFFFF" size={20} />
       ) : (
         <Text style={styles.keypadText}>{label || key}</Text>
       )}
@@ -190,166 +202,280 @@ export const TrackingScreen = () => {
 
   return (
     <AnimatedBackground>
-      <Animated.View style={[styles.container, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-        
-        {/* Top Row */}
-        <View style={styles.topRow}>
-          <TouchableOpacity style={styles.closeBtn} onPress={() => navigation.goBack()} activeOpacity={0.7}>
-            <X color="#FFFFFF" size={22} />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.headerPill} onPress={onToggleType} activeOpacity={0.7}>
-            <View style={[styles.dot, { backgroundColor: mainColor }]} />
-            <Text style={styles.headerText}>
-              {txType === 'expense' ? 'Expense' : 'Income'}
-            </Text>
-            <ChevronDown color="#A0A0A0" size={16} />
-          </TouchableOpacity>
-          <View style={{ width: 40 }} /> 
-        </View>
-
-        {/* Display Area */}
-        <View style={styles.displayArea}>
-          <Text style={[styles.currencyLabel, { color: mainColor }]}>{currencySymbol}</Text>
-          <Animated.Text 
-            style={[
-              styles.amountText, 
-              { color: isValid ? '#FFFFFF' : 'rgba(255,255,255,0.4)', transform: [{ scale: amountScaleAnim }] }
-            ]}
-            numberOfLines={1}
-            adjustsFontSizeToFit
-          >
-            {amount}
-          </Animated.Text>
-        </View>
-
-        {/* Categories */}
-        <View style={styles.categoriesWrapper}>
+      <KeyboardAvoidingView
+        style={styles.keyboardRoot}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top + 8 : 0}
+      >
+        <Animated.View
+          style={[
+            styles.container,
+            { paddingTop: Math.max(insets.top, 12) + 8, opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
+          ]}
+        >
           <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.catScroll}
+            style={styles.formScroll}
+            contentContainerStyle={styles.formScrollContent}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+            bounces
           >
-            {categories.map(cat => {
-              const isSelected = selectedCat === cat.label;
-              return (
-                <TouchableOpacity
-                  key={cat.id}
-                  onPress={() => {
-                    Haptics.selectionAsync();
-                    setSelectedCat(cat.label);
-                  }}
-                  activeOpacity={0.8}
-                >
-                  <View
-                    style={[
-                      styles.catChip,
-                      isSelected && {
-                        backgroundColor: `${cat.color}30`,
-                        borderColor: cat.color,
-                      },
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.catText,
-                        isSelected && { color: cat.color, fontWeight: '700' },
-                      ]}
-                    >
-                      {cat.label}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-        </View>
+            {/* Top Row */}
+            <View style={styles.topRow}>
+              <TouchableOpacity style={styles.closeBtn} onPress={() => navigation.goBack()} activeOpacity={0.7}>
+                <X color="#FFFFFF" size={22} />
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.headerPill} onPress={onToggleType} activeOpacity={0.7}>
+                <View style={[styles.dot, { backgroundColor: mainColor }]} />
+                <Text style={styles.headerText}>
+                  {txType === 'expense' ? 'Expense' : 'Income'}
+                </Text>
+                <ChevronDown color="#A0A0A0" size={16} />
+              </TouchableOpacity>
+              <View style={{ width: 40 }} />
+            </View>
 
-        {/* Note & Photo */}
+            {/* Display Area */}
+            <TouchableOpacity
+              style={styles.displayArea}
+              activeOpacity={1}
+              onPress={triggerAmountBounce}
+            >
+              <Text style={[styles.currencyLabel, { color: mainColor }]}>{currencySymbol}</Text>
+              <Animated.Text
+                style={[
+                  styles.amountText,
+                  { color: isValid ? '#FFFFFF' : 'rgba(255,255,255,0.4)', transform: [{ scale: amountScaleAnim }] },
+                ]}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+              >
+                {amount}
+              </Animated.Text>
+            </TouchableOpacity>
+
+            {/* Categories */}
+            <View style={styles.categoriesWrapper}>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.catScroll}
+                keyboardShouldPersistTaps="handled"
+              >
+                {categories.map(cat => {
+                  const isSelected = selectedCat === cat.label;
+                  return (
+                    <TouchableOpacity
+                      key={cat.id}
+                      onPress={() => {
+                        Haptics.selectionAsync();
+                        setSelectedCat(cat.label);
+                      }}
+                      activeOpacity={0.8}
+                    >
+                      <View
+                        style={[
+                          styles.catChip,
+                          isSelected && {
+                            backgroundColor: `${cat.color}30`,
+                            borderColor: cat.color,
+                          },
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.catText,
+                            isSelected && { color: cat.color, fontWeight: '700' },
+                          ]}
+                        >
+                          {cat.label}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            </View>
+
+        {/* Optional name & note */}
+        <View style={styles.nameRow}>
+          <TextInput
+            style={styles.nameInput}
+            value={merchantName}
+            onChangeText={setMerchantName}
+            placeholder={txType === 'expense' ? 'Name (e.g. Netflix, rent)' : 'Name (optional)'}
+            placeholderTextColor="rgba(255,255,255,0.3)"
+            maxLength={40}
+            returnKeyType="next"
+          />
+        </View>
         <View style={styles.extrasRow}>
           <TextInput
             style={styles.noteInput}
             value={note}
             onChangeText={setNote}
             placeholder="Add a note..."
-            placeholderTextColor="rgba(255,255,255,0.3)"
-            maxLength={60}
-            returnKeyType="done"
-          />
-          <TouchableOpacity style={styles.photoBtn} onPress={pickPhoto} activeOpacity={0.7}>
-            {photoUri ? (
-              <View style={styles.photoPreviewWrap}>
-                <Image source={{ uri: photoUri }} style={styles.photoThumb} />
-                <TouchableOpacity
-                  style={styles.removePhoto}
-                  onPress={() => { Haptics.selectionAsync(); setPhotoUri(null); }}
-                >
-                  <Trash2 color="#FFF" size={12} />
-                </TouchableOpacity>
+                placeholderTextColor="rgba(255,255,255,0.3)"
+                maxLength={60}
+                returnKeyType="done"
+                blurOnSubmit
+                onSubmitEditing={() => Keyboard.dismiss()}
+              />
+              <TouchableOpacity style={styles.photoBtn} onPress={pickPhoto} activeOpacity={0.7}>
+                {photoUri ? (
+                  <View style={styles.photoPreviewWrap}>
+                    <Image source={{ uri: photoUri }} style={styles.photoThumb} />
+                    <TouchableOpacity
+                      style={styles.removePhoto}
+                      onPress={() => {
+                        Haptics.selectionAsync();
+                        setPhotoUri(null);
+                      }}
+                    >
+                      <Trash2 color="#FFF" size={12} />
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <Camera color="#A0A0A0" size={20} />
+                )}
+              </TouchableOpacity>
+            </View>
+
+            {/* Recurring payment */}
+            <View style={styles.recurringCard}>
+              <View style={styles.recurringTopRow}>
+                <View style={styles.recurringLabelBlock}>
+                  <View style={[styles.recurringIconWrap, isRecurring && styles.recurringIconWrapOn]}>
+                    <RefreshCcw color={isRecurring ? theme.colors.accent : '#A0A0A0'} size={18} strokeWidth={2} />
+                  </View>
+                  <View style={styles.recurringTextBlock}>
+                    <Text style={styles.recurringTitle}>Recurring payment</Text>
+                    <Text style={styles.recurringSubtitle}>
+                      {isRecurring ? 'Repeats on the schedule below' : 'Bill or income that happens again automatically'}
+                    </Text>
+                  </View>
+                </View>
+                <Switch
+                  value={isRecurring}
+                  onValueChange={v => {
+                    Haptics.selectionAsync();
+                    setIsRecurring(v);
+                  }}
+                  trackColor={{ false: 'rgba(255,255,255,0.12)', true: 'rgba(187,134,252,0.45)' }}
+                  thumbColor={isRecurring ? theme.colors.accent : '#8E8E93'}
+                  ios_backgroundColor="rgba(255,255,255,0.12)"
+                />
               </View>
-            ) : (
-              <Camera color="#A0A0A0" size={20} />
-            )}
-          </TouchableOpacity>
-        </View>
 
-        {/* Keypad */}
-        <View style={styles.keypadArea}>
-          <View style={styles.keypadRow}>
-            {renderKey('1')}
-            {renderKey('2')}
-            {renderKey('3')}
-          </View>
-          <View style={styles.keypadRow}>
-            {renderKey('4')}
-            {renderKey('5')}
-            {renderKey('6')}
-          </View>
-          <View style={styles.keypadRow}>
-            {renderKey('7')}
-            {renderKey('8')}
-            {renderKey('9')}
-          </View>
-          <View style={styles.keypadRow}>
-            {renderKey('.')}
-            {renderKey('0')}
-            {renderKey('del')}
-          </View>
-        </View>
+              {isRecurring && (
+                <View style={styles.freqSection}>
+                  <Text style={styles.freqSectionLabel}>How often?</Text>
+                  <View style={styles.freqGrid}>
+                    {(
+                      [
+                        { key: 'daily' as const, label: 'Daily' },
+                        { key: 'weekly' as const, label: 'Weekly' },
+                        { key: 'monthly' as const, label: 'Monthly' },
+                        { key: 'yearly' as const, label: 'Yearly' },
+                      ] as const
+                    ).map(({ key, label }) => {
+                      const on = recurringFreq === key;
+                      return (
+                        <View key={key} style={styles.freqCell}>
+                          <TouchableOpacity
+                            style={[styles.freqCellInner, on && styles.freqCellInnerActive]}
+                            onPress={() => {
+                              Haptics.selectionAsync();
+                              setRecurringFreq(key);
+                            }}
+                            activeOpacity={0.75}
+                          >
+                            <Text style={[styles.freqCellText, on && styles.freqCellTextActive]}>{label}</Text>
+                          </TouchableOpacity>
+                        </View>
+                      );
+                    })}
+                  </View>
+                </View>
+              )}
+            </View>
+          </ScrollView>
 
-        {/* Confirm Button */}
-        <View style={styles.bottomArea}>
-          <TouchableOpacity
-            style={[
-              styles.confirmBtn,
-              { backgroundColor: isValid ? mainColor : 'rgba(255,255,255,0.1)' },
-              confirming && { opacity: 0.7 }
-            ]}
-            disabled={!isValid || confirming}
-            onPress={handleConfirm}
-            activeOpacity={0.8}
-          >
-            <Text style={[styles.confirmBtnText, { color: isValid ? '#121212' : '#666' }]}>
-              {confirming ? 'Saving...' : 'Add Transaction'}
-            </Text>
-            {isValid && !confirming && <ArrowRight color="#121212" size={20} />}
-          </TouchableOpacity>
-        </View>
-      </Animated.View>
+          {/* Fixed keypad + confirm — never overlaps scrollable form */}
+          <View style={[styles.keypadFooter, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+            <View style={styles.keypadArea}>
+              <View style={styles.keypadRow}>
+                {renderKey('1')}
+                {renderKey('2')}
+                {renderKey('3')}
+              </View>
+              <View style={styles.keypadRow}>
+                {renderKey('4')}
+                {renderKey('5')}
+                {renderKey('6')}
+              </View>
+              <View style={styles.keypadRow}>
+                {renderKey('7')}
+                {renderKey('8')}
+                {renderKey('9')}
+              </View>
+              <View style={styles.keypadRow}>
+                {renderKey('.')}
+                {renderKey('0')}
+                {renderKey('del')}
+              </View>
+            </View>
+
+            <View style={styles.bottomArea}>
+              <TouchableOpacity
+                style={[
+                  styles.confirmBtn,
+                  { backgroundColor: isValid ? mainColor : 'rgba(255,255,255,0.1)' },
+                  confirming && { opacity: 0.7 },
+                ]}
+                disabled={!isValid || confirming}
+                onPress={handleConfirm}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.confirmBtnText, { color: isValid ? '#121212' : '#666' }]}>
+                  {confirming ? 'Saving...' : 'Add Transaction'}
+                </Text>
+                {isValid && !confirming && <ArrowRight color="#121212" size={20} />}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Animated.View>
+      </KeyboardAvoidingView>
     </AnimatedBackground>
   );
 };
 
 const styles = StyleSheet.create({
+  keyboardRoot: {
+    flex: 1,
+  },
   container: {
     flex: 1,
-    paddingTop: 50,
+  },
+  formScroll: {
+    flex: 1,
+  },
+  formScrollContent: {
+    paddingBottom: 12,
+    flexGrow: 1,
+  },
+  keypadFooter: {
+    flexShrink: 0,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: 'transparent',
   },
   topRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    marginBottom: 20,
+    marginBottom: 12,
   },
   closeBtn: {
     width: 44,
@@ -385,48 +511,63 @@ const styles = StyleSheet.create({
   displayArea: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 30,
+    paddingVertical: 16,
     flexDirection: 'row',
     paddingHorizontal: 20,
   },
   currencyLabel: {
-    fontSize: 36,
+    fontSize: 28,
     fontWeight: '400',
     marginRight: 8,
     alignSelf: 'center',
   },
   amountText: {
-    fontSize: 64,
+    fontSize: 52,
     fontWeight: '800',
     letterSpacing: -2,
     textAlign: 'center',
+    maxWidth: width - 100,
   },
   categoriesWrapper: {
-    marginBottom: 20,
+    marginBottom: 12,
   },
   catScroll: {
     paddingHorizontal: 20,
-    gap: 10,
+    gap: 6,
   },
   catChip: {
-    paddingVertical: 12,
-    paddingHorizontal: 18,
-    borderRadius: 24,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.1)',
     backgroundColor: 'rgba(255,255,255,0.05)',
   },
   catText: {
-    fontSize: 14,
+    fontSize: 11,
     color: '#A0A0A0',
     fontWeight: '600',
+  },
+  nameRow: {
+    paddingHorizontal: 20,
+    marginBottom: 8,
+  },
+  nameInput: {
+    height: 44,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+    paddingHorizontal: 14,
+    fontSize: 14,
+    color: '#FFF',
   },
   extrasRow: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 20,
     gap: 12,
-    marginBottom: 24,
+    marginBottom: 12,
   },
   noteInput: {
     flex: 1,
@@ -472,32 +613,32 @@ const styles = StyleSheet.create({
     borderColor: '#121212',
   },
   keypadArea: {
-    paddingHorizontal: 30,
-    paddingBottom: 10,
-    flex: 1,
-    justifyContent: 'flex-end',
+    paddingHorizontal: 24,
+    paddingTop: 8,
+    paddingBottom: 4,
   },
   keypadRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 16,
+    alignItems: 'center',
+    marginBottom: 8,
   },
   keypadBtn: {
-    width: width * 0.22,
-    height: 64,
+    width: width * 0.19,
+    height: 50,
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: 32,
+    borderRadius: 25,
   },
   keypadText: {
-    fontSize: 28,
+    fontSize: 22,
     color: '#FFF',
     fontWeight: '500',
   },
   bottomArea: {
     paddingHorizontal: 20,
-    paddingBottom: 40,
-    paddingTop: 10,
+    paddingBottom: 4,
+    paddingTop: 6,
   },
   confirmBtn: {
     flexDirection: 'row',
@@ -515,5 +656,102 @@ const styles = StyleSheet.create({
   confirmBtnText: {
     fontSize: 18,
     fontWeight: '800',
+  },
+  recurringCard: {
+    marginHorizontal: 20,
+    marginBottom: 8,
+    padding: 16,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  recurringTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  recurringLabelBlock: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    minWidth: 0,
+  },
+  recurringIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  recurringIconWrapOn: {
+    backgroundColor: 'rgba(187,134,252,0.12)',
+    borderColor: 'rgba(187,134,252,0.35)',
+  },
+  recurringTextBlock: {
+    flex: 1,
+    minWidth: 0,
+  },
+  recurringTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginBottom: 2,
+  },
+  recurringSubtitle: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.45)',
+    lineHeight: 16,
+  },
+  freqSection: {
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: 'rgba(255,255,255,0.1)',
+  },
+  freqSectionLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: 'rgba(255,255,255,0.4)',
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+    marginBottom: 10,
+  },
+  freqGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginHorizontal: -4,
+  },
+  freqCell: {
+    width: '50%',
+    paddingHorizontal: 4,
+    paddingBottom: 8,
+  },
+  freqCellInner: {
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  freqCellInnerActive: {
+    backgroundColor: 'rgba(187,134,252,0.12)',
+    borderColor: 'rgba(187,134,252,0.45)',
+  },
+  freqCellText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.55)',
+  },
+  freqCellTextActive: {
+    color: theme.colors.accent,
   },
 });

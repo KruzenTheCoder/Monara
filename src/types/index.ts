@@ -14,9 +14,14 @@ export interface Transaction {
   amount: number;
   category: string;
   date: string;
+  /** Short label for the payee or bill (e.g. Netflix). */
+  merchant_name?: string;
   note?: string;
   receipt_image_url?: string;
   is_manual_entry: boolean;
+  recurring?: {
+    frequency: 'daily' | 'weekly' | 'monthly' | 'yearly';
+  };
 }
 
 export interface Budget {

@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, Dimensions } from 'react-native';
-import Svg, { Rect, Text as SvgText, Circle } from 'react-native-svg';
+import { View, Text, StyleSheet, ScrollView, Dimensions, TouchableOpacity } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import Svg, { Rect, Text as SvgText, Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
 import { GlassBox } from '../components/GlassBox';
 import { AnimatedBackground } from '../components/AnimatedBackground';
 import { theme, formatCurrencyFull, getCategoryColor } from '../utils/theme';
@@ -12,8 +13,17 @@ const SCREEN_W = Dimensions.get('window').width;
 const CHART_W = SCREEN_W - 80;
 
 export const AnalyticsScreen = () => {
-  const { transactions, monthlyIncome, monthlyExpenses, savingsRate, monthlySpendingByCategory } =
-    useFinancial();
+  const navigation = useNavigation<any>();
+  const {
+    transactions,
+    monthlyIncome,
+    monthlyExpenses,
+    savingsRate,
+    monthlySpendingByCategory,
+    monthlyEstimatedTax,
+    user,
+  } = useFinancial();
+  const currency = user?.currency || 'USD';
 
   const months = useMemo(() => {
     const result = [];
@@ -40,7 +50,7 @@ export const AnalyticsScreen = () => {
   // Month-over-Month logic
   const currentMonthData = months[5];
   const lastMonthData = months[4];
-  const momExpenseChange = lastMonthData.expense > 0 
+  const momExpenseChange = (lastMonthData && lastMonthData.expense > 0)
     ? ((currentMonthData.expense - lastMonthData.expense) / lastMonthData.expense) * 100 
     : 0;
 
@@ -70,14 +80,14 @@ export const AnalyticsScreen = () => {
             <TrendingUp color={theme.colors.status.green} size={18} />
             <Text style={styles.summaryLabel}>Income</Text>
             <Text style={[styles.summaryVal, { color: theme.colors.status.green }]}>
-              {formatCurrencyFull(monthlyIncome)}
+              {formatCurrencyFull(monthlyIncome, currency)}
             </Text>
           </GlassBox>
           <GlassBox style={styles.summaryCard}>
             <TrendingDown color={theme.colors.status.red} size={18} />
             <Text style={styles.summaryLabel}>Expenses</Text>
             <Text style={[styles.summaryVal, { color: theme.colors.status.red }]}>
-              {formatCurrencyFull(monthlyExpenses)}
+              {formatCurrencyFull(monthlyExpenses, currency)}
             </Text>
           </GlassBox>
           <GlassBox style={styles.summaryCard}>
@@ -88,6 +98,12 @@ export const AnalyticsScreen = () => {
             </Text>
           </GlassBox>
         </View>
+        {user.tax_enabled && monthlyEstimatedTax > 0 && (
+          <GlassBox style={styles.taxBanner}>
+            <Text style={theme.typography.label}>Est. tax on expenses (this month)</Text>
+            <Text style={styles.taxBannerVal}>{formatCurrencyFull(monthlyEstimatedTax, currency)}</Text>
+          </GlassBox>
+        )}
 
         {/* Deep Insights */}
         <Text style={styles.sectionTitle}>Key Insights</Text>
@@ -97,7 +113,7 @@ export const AnalyticsScreen = () => {
               <Activity color="#64B5F6" size={16} />
             </View>
             <Text style={styles.insightLabel}>Daily Avg Spend</Text>
-            <Text style={styles.insightValue}>{formatCurrencyFull(dailyAverage)}</Text>
+            <Text style={styles.insightValue}>{formatCurrencyFull(dailyAverage, currency)}</Text>
             <Text style={styles.insightSub}>Based on {daysPassed} days</Text>
           </GlassBox>
           
@@ -133,7 +149,7 @@ export const AnalyticsScreen = () => {
                 ]}
               >
                 {monthlyIncome >= monthlyExpenses ? '+' : '-'}
-                {formatCurrencyFull(Math.abs(monthlyIncome - monthlyExpenses))}
+                {formatCurrencyFull(Math.abs(monthlyIncome - monthlyExpenses), currency)}
               </Text>
             </View>
             <View style={styles.netBarBg}>
@@ -181,16 +197,16 @@ export const AnalyticsScreen = () => {
               </Text>
             ) : (
               <Svg width={CHART_W} height={BAR_H + 40}>
-                <Svg.Defs>
-                  <Svg.LinearGradient id="gradInc" x1="0%" y1="0%" x2="0%" y2="100%">
-                    <Svg.Stop offset="0%" stopColor="#10B981" stopOpacity="1" />
-                    <Svg.Stop offset="100%" stopColor="#10B981" stopOpacity="0.3" />
-                  </Svg.LinearGradient>
-                  <Svg.LinearGradient id="gradExp" x1="0%" y1="0%" x2="0%" y2="100%">
-                    <Svg.Stop offset="0%" stopColor="#EF4444" stopOpacity="1" />
-                    <Svg.Stop offset="100%" stopColor="#EF4444" stopOpacity="0.3" />
-                  </Svg.LinearGradient>
-                </Svg.Defs>
+                <Defs>
+                  <LinearGradient id="gradInc" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <Stop offset="0%" stopColor="#10B981" stopOpacity="1" />
+                    <Stop offset="100%" stopColor="#10B981" stopOpacity="0.3" />
+                  </LinearGradient>
+                  <LinearGradient id="gradExp" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <Stop offset="0%" stopColor="#EF4444" stopOpacity="1" />
+                    <Stop offset="100%" stopColor="#EF4444" stopOpacity="0.3" />
+                  </LinearGradient>
+                </Defs>
                 {months.map((m, i) => {
                   const groupW = CHART_W / 6;
                   const x = i * groupW + groupW * 0.15;
@@ -266,7 +282,12 @@ export const AnalyticsScreen = () => {
               const pct = totalCatSpend > 0 ? (amount / totalCatSpend) * 100 : 0;
               const color = getCategoryColor(cat);
               return (
-                <View key={cat} style={[styles.catRow, i < catEntries.length - 1 && styles.catDivider]}>
+                <TouchableOpacity
+                  key={cat}
+                  activeOpacity={0.8}
+                  onPress={() => navigation.navigate('CategoryTransactions', { category: cat })}
+                  style={[styles.catRow, i < catEntries.length - 1 && styles.catDivider]}
+                >
                   <View style={styles.catLeft}>
                     <View style={[styles.catDot, { backgroundColor: color }]} />
                     <Text style={styles.catName}>{cat}</Text>
@@ -282,38 +303,33 @@ export const AnalyticsScreen = () => {
                     </View>
                   </View>
                   <View style={styles.catRight}>
-                    <Text style={styles.catAmount}>{formatCurrencyFull(amount)}</Text>
+                    <Text style={styles.catAmount}>{formatCurrencyFull(amount, currency)}</Text>
                     <Text style={[theme.typography.label, { fontSize: 11 }]}>{pct.toFixed(0)}%</Text>
                   </View>
-                </View>
+                </TouchableOpacity>
               );
             })}
           </GlassBox>
         )}
 
-        {/* Transactions count */}
-        <GlassBox style={styles.statsCard}>
-          <View style={styles.statsGrid}>
-            <View style={styles.statBox}>
-              <Text style={styles.statNum}>{transactions.length}</Text>
-              <Text style={theme.typography.label}>Total Transactions</Text>
-            </View>
-            <View style={styles.statSep} />
-            <View style={styles.statBox}>
-              <Text style={styles.statNum}>
-                {transactions.filter(t => isThisMonth(new Date(t.date))).length}
-              </Text>
-              <Text style={theme.typography.label}>This Month</Text>
-            </View>
-            <View style={styles.statSep} />
-            <View style={styles.statBox}>
-              <Text style={[styles.statNum, { color: theme.colors.accent }]}>
-                {savingsRate.toFixed(0)}%
-              </Text>
-              <Text style={theme.typography.label}>Savings Rate</Text>
-            </View>
-          </View>
-        </GlassBox>
+        {/* Activity snapshot — aligned with top summary cards */}
+        <Text style={styles.sectionTitle}>Activity</Text>
+        <View style={styles.snapRow}>
+          <GlassBox style={styles.snapCard}>
+            <Text style={styles.snapLabel}>Total</Text>
+            <Text style={styles.snapValue}>{transactions.length}</Text>
+          </GlassBox>
+          <GlassBox style={styles.snapCard}>
+            <Text style={styles.snapLabel}>This month</Text>
+            <Text style={styles.snapValue}>
+              {transactions.filter(t => isThisMonth(new Date(t.date))).length}
+            </Text>
+          </GlassBox>
+          <GlassBox style={styles.snapCard}>
+            <Text style={styles.snapLabel}>Savings</Text>
+            <Text style={[styles.snapValue, { color: theme.colors.accent }]}>{savingsRate.toFixed(0)}%</Text>
+          </GlassBox>
+        </View>
       </ScrollView>
     </AnimatedBackground>
   );
@@ -354,6 +370,17 @@ const styles = StyleSheet.create({
   summaryVal: {
     fontSize: 14,
     fontWeight: '700',
+  },
+  taxBanner: {
+    marginBottom: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  taxBannerVal: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: theme.colors.accent,
   },
   insightsGrid: {
     flexDirection: 'row',
@@ -505,26 +532,33 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     marginBottom: 16,
   },
-  statsCard: {
-    marginBottom: 10,
-  },
-  statsGrid: {
+  snapRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    gap: 10,
+    marginBottom: 8,
+    alignItems: 'stretch',
   },
-  statBox: {
+  snapCard: {
     flex: 1,
+    minWidth: 0,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
     alignItems: 'center',
-    gap: 2,
+    justifyContent: 'center',
+    gap: 4,
   },
-  statSep: {
-    width: 1,
-    height: 32,
-    backgroundColor: '#2C2C2C',
+  snapLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#A0A0A0',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+    textAlign: 'center',
   },
-  statNum: {
-    fontSize: 22,
-    fontWeight: '700',
+  snapValue: {
+    fontSize: 17,
+    fontWeight: '800',
     color: '#FFFFFF',
+    textAlign: 'center',
   },
 });

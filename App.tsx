@@ -7,6 +7,7 @@ import { RootNavigator } from './src/navigation/RootNavigator';
 import { AuthScreen } from './src/screens/AuthScreen';
 import { ProfileScreen } from './src/screens/ProfileScreen';
 import { TrackingScreen } from './src/screens/TrackingScreen';
+import { CategoryTransactionsScreen } from './src/screens/CategoryTransactionsScreen';
 import { FinancialProvider } from './src/context/FinancialContext';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
@@ -72,6 +73,11 @@ export default function App() {
               <Stack.Screen name="Tabs" component={RootNavigator} />
               <Stack.Screen name="Profile" component={ProfileScreen} options={{ animation: 'slide_from_right' }} />
               <Stack.Screen name="AddTransaction" component={TrackingScreen} options={{ animation: 'slide_from_bottom' }} />
+              <Stack.Screen
+                name="CategoryTransactions"
+                component={CategoryTransactionsScreen}
+                options={{ animation: 'slide_from_right' }}
+              />
             </Stack.Navigator>
           ) : (
             <AuthScreen onAuthenticate={() => setIsAuthenticated(true)} />
