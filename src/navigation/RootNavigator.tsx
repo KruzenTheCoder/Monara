@@ -30,6 +30,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
+import { theme } from '../utils/theme';
 
 const Tab = createBottomTabNavigator();
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -164,7 +165,7 @@ const AnimatedGradientBackground = ({ isVisible }: { isVisible: boolean }) => {
       ]}
     >
       <LinearGradient
-        colors={['rgba(124, 58, 237, 0.15)', 'rgba(167, 139, 250, 0.05)', 'transparent']}
+        colors={['rgba(62, 146, 204, 0.12)', 'rgba(62, 146, 204, 0.04)', 'transparent']}
         start={{ x: 0.5, y: 1 }}
         end={{ x: 0.5, y: 0 }}
         style={StyleSheet.absoluteFill}
@@ -279,7 +280,7 @@ const AddPopup = ({
             { opacity: backdropOpacity }
           ]}
         >
-          <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFill} />
+          <BlurView intensity={40} tint={theme.isDark ? 'dark' : 'light'} style={StyleSheet.absoluteFill} />
           <Pressable
             style={[StyleSheet.absoluteFill, styles.backdrop]}
             onPress={onClose}
@@ -297,6 +298,8 @@ const AddPopup = ({
               {
                 opacity: containerOpacity,
                 transform: [{ scale: containerScale }],
+                backgroundColor: theme.colors.surface,
+                borderColor: theme.colors.divider,
               },
             ]}
           >
@@ -309,7 +312,7 @@ const AddPopup = ({
                 ]}
               >
                 <LinearGradient
-                  colors={['rgba(167, 139, 250, 0.25)', 'rgba(124, 58, 237, 0)']}
+                  colors={['rgba(62, 146, 204, 0.2)', 'rgba(62, 146, 204, 0)']}
                   style={styles.glow}
                 />
               </Animated.View>
@@ -321,7 +324,7 @@ const AddPopup = ({
                 <View style={styles.titleLine} />
               </View>
 
-              <Text style={styles.popupSubtitle}>What would you like to log?</Text>
+              <Text style={[styles.popupSubtitle, { color: theme.colors.primaryText }]}>What would you like to log?</Text>
 
               {/* Action Grid */}
               <View style={styles.actionsRow}>
@@ -355,10 +358,10 @@ const AddPopup = ({
               activeOpacity={0.8}
             >
               <LinearGradient
-                colors={['#1E1E1E', '#121212']}
+                colors={theme.isDark ? ['#1C1C25', '#16161D'] : ['#FFFFFF', '#F0F1F5']}
                 style={styles.closeButtonGradient}
               >
-                <X color="#A0A0A0" size={24} strokeWidth={2.5} />
+                <X color={theme.colors.secondaryText} size={24} strokeWidth={2.5} />
               </LinearGradient>
             </TouchableOpacity>
           </Animated.View>
@@ -401,7 +404,7 @@ const CenterTabButton = ({ onPress }: { onPress: () => void }) => {
         <View style={styles.outerGlowRing} />
 
         <LinearGradient
-          colors={['#8B5CF6', '#7C3AED', '#6D28D9']}
+          colors={['#3E92CC', '#2B7AB5', '#1B6A9E']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.centerButton}
@@ -419,7 +422,10 @@ export const RootNavigator = () => {
   const navigation = useNavigation<any>();
 
   const TAB_BAR_HEIGHT = 60;
-  const bottomPadding = Math.max(insets.bottom, 8);
+  // Android standalone builds require extra padding compared to Expo Go due to native navigation bars in edge-to-edge mode.
+  const bottomPadding = Platform.OS === 'android' 
+    ? Math.max(insets.bottom, 24) 
+    : Math.max(insets.bottom, 8);
 
   const handleActionPress = (actionType: 'expense' | 'income') => {
     setShowPopup(false);
@@ -444,23 +450,23 @@ export const RootNavigator = () => {
             paddingBottom: bottomPadding,
             paddingTop: 8,
             paddingHorizontal: 8,
-            backgroundColor: '#1A1A1F',
+            backgroundColor: theme.colors.surface,
             borderTopWidth: StyleSheet.hairlineWidth,
-            borderTopColor: 'rgba(255, 255, 255, 0.08)',
+            borderTopColor: theme.colors.divider,
             elevation: 0,
-            shadowColor: '#000',
+            shadowColor: theme.isDark ? '#000' : '#1B2A4A',
             shadowOffset: { width: 0, height: -2 },
-            shadowOpacity: 0.1,
+            shadowOpacity: theme.isDark ? 0.2 : 0.06,
             shadowRadius: 8,
           },
           tabBarItemStyle: {
             paddingVertical: 4,
           },
-          tabBarActiveTintColor: '#A78BFA',
-          tabBarInactiveTintColor: 'rgba(255, 255, 255, 0.45)',
+          tabBarActiveTintColor: theme.colors.accent,
+          tabBarInactiveTintColor: theme.colors.secondaryText,
           tabBarShowLabel: true,
           tabBarHideOnKeyboard: true,
-          sceneStyle: { backgroundColor: '#0F1117' },
+          sceneStyle: { backgroundColor: theme.colors.backgroundStart },
         }}
       >
         <Tab.Screen
@@ -528,12 +534,12 @@ const styles = StyleSheet.create({
   tabLabel: {
     fontSize: 10,
     fontWeight: '500',
-    color: 'rgba(255, 255, 255, 0.45)',
+    color: theme.colors.secondaryText,
     marginTop: 2,
     letterSpacing: 0.2,
   },
   tabLabelFocused: {
-    color: '#A78BFA',
+    color: theme.colors.accent,
     fontWeight: '600',
   },
   centerButtonTouchable: {
@@ -553,7 +559,7 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: 'rgba(124, 58, 237, 0.2)',
+    backgroundColor: 'rgba(62, 146, 204, 0.15)',
   },
   centerButton: {
     width: 60,
@@ -562,10 +568,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 3,
-    borderColor: '#1A1A1F',
+    borderColor: theme.isDark ? theme.colors.surface : '#FFFFFF',
     ...Platform.select({
       ios: {
-        shadowColor: '#7C3AED',
+        shadowColor: theme.isDark ? '#000' : '#3E92CC',
         shadowOffset: { width: 0, height: 6 },
         shadowOpacity: 0.5,
         shadowRadius: 12,
@@ -579,7 +585,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   backdrop: {
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    backgroundColor: theme.colors.overlayBg,
   },
   popupContentWrapper: {
     flex: 1,
@@ -588,14 +594,14 @@ const styles = StyleSheet.create({
   },
   popupContent: {
     width: SCREEN_WIDTH - 64,
-    backgroundColor: '#1E1E1E',
+    backgroundColor: theme.colors.surface,
     borderRadius: 32,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: theme.colors.divider,
     overflow: 'visible',
-    shadowColor: '#000',
+    shadowColor: theme.isDark ? '#000' : '#1B2A4A',
     shadowOffset: { width: 0, height: 20 },
-    shadowOpacity: 0.5,
+    shadowOpacity: 0.12,
     shadowRadius: 30,
     elevation: 20,
   },
@@ -625,19 +631,19 @@ const styles = StyleSheet.create({
   titleLine: {
     height: 1,
     flex: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: theme.colors.divider,
   },
   popupTitle: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#A78BFA',
+    color: theme.colors.accent,
     textTransform: 'uppercase',
     letterSpacing: 2,
   },
   popupSubtitle: {
     fontSize: 22,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: theme.colors.primaryText,
     marginBottom: 32,
     textAlign: 'center',
   },
@@ -670,7 +676,7 @@ const styles = StyleSheet.create({
   actionItemLabel: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: theme.colors.primaryText,
     textAlign: 'center',
   },
   closeButtonContainer: {
@@ -690,15 +696,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderColor: theme.colors.divider,
   },
   profileBtn: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#1E1E1E',
+    backgroundColor: theme.colors.surfaceSecondary,
     borderWidth: 1,
-    borderColor: '#2C2C2C',
+    borderColor: theme.colors.divider,
     justifyContent: 'center',
     alignItems: 'center',
     alignSelf: 'center',

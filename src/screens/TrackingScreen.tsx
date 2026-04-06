@@ -9,12 +9,11 @@ import {
   Platform,
   Image,
   Animated,
-  Alert,
   Dimensions,
   Keyboard,
-  Switch,
   KeyboardAvoidingView,
 } from 'react-native';
+import { showStyledAlert } from '../components/StyledAlert';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
@@ -23,7 +22,7 @@ import { AnimatedBackground } from '../components/AnimatedBackground';
 import { theme, getCurrencySymbol } from '../utils/theme';
 import { useFinancial } from '../context/FinancialContext';
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from '../types';
-import { ChevronDown, ArrowRight, X, Camera, Trash2, Delete, RefreshCcw } from 'lucide-react-native';
+import { ChevronDown, ArrowRight, X, Camera, Trash2, Delete } from 'lucide-react-native';
 
 const { width } = Dimensions.get('window');
 
@@ -41,8 +40,6 @@ export const TrackingScreen = () => {
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [merchantName, setMerchantName] = useState('');
   const [note, setNote] = useState('');
-  const [isRecurring, setIsRecurring] = useState(false);
-  const [recurringFreq, setRecurringFreq] = useState<'daily' | 'weekly' | 'monthly' | 'yearly'>('monthly');
 
   // Entrance animation
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -92,13 +89,13 @@ export const TrackingScreen = () => {
 
   const pickPhoto = async () => {
     Haptics.selectionAsync();
-    Alert.alert('Add Photo', 'Choose a source', [
+    showStyledAlert('Add Photo', 'Choose a source', [
       {
         text: 'Camera',
         onPress: async () => {
           const { status } = await ImagePicker.requestCameraPermissionsAsync();
           if (status !== 'granted') {
-            Alert.alert('Permission needed', 'Camera access is required to take photos.');
+            showStyledAlert('Permission needed', 'Camera access is required to take photos.', undefined, 'info');
             return;
           }
           const result = await ImagePicker.launchCameraAsync({
@@ -116,7 +113,7 @@ export const TrackingScreen = () => {
         onPress: async () => {
           const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
           if (status !== 'granted') {
-            Alert.alert('Permission needed', 'Gallery access is required to pick photos.');
+            showStyledAlert('Permission needed', 'Gallery access is required to pick photos.', undefined, 'info');
             return;
           }
           const result = await ImagePicker.launchImageLibraryAsync({
@@ -130,7 +127,7 @@ export const TrackingScreen = () => {
         },
       },
       { text: 'Cancel', style: 'cancel' },
-    ]);
+    ], 'photo');
   };
 
   useEffect(() => {
@@ -170,7 +167,6 @@ export const TrackingScreen = () => {
       ...(merchantName.trim() ? { merchant_name: merchantName.trim() } : {}),
       ...(note.trim() ? { note: note.trim() } : {}),
       ...(photoUri ? { receipt_image_url: photoUri } : {}),
-      ...(isRecurring ? { recurring: { frequency: recurringFreq } } : {}),
     });
 
     setTimeout(() => {
@@ -193,7 +189,7 @@ export const TrackingScreen = () => {
       activeOpacity={0.6}
     >
       {key === 'del' ? (
-        <Delete color="#FFFFFF" size={20} />
+        <Delete color={theme.colors.primaryText} size={20} />
       ) : (
         <Text style={styles.keypadText}>{label || key}</Text>
       )}
@@ -223,14 +219,14 @@ export const TrackingScreen = () => {
             {/* Top Row */}
             <View style={styles.topRow}>
               <TouchableOpacity style={styles.closeBtn} onPress={() => navigation.goBack()} activeOpacity={0.7}>
-                <X color="#FFFFFF" size={22} />
+                <X color={theme.colors.primaryText} size={22} />
               </TouchableOpacity>
               <TouchableOpacity style={styles.headerPill} onPress={onToggleType} activeOpacity={0.7}>
                 <View style={[styles.dot, { backgroundColor: mainColor }]} />
                 <Text style={styles.headerText}>
                   {txType === 'expense' ? 'Expense' : 'Income'}
                 </Text>
-                <ChevronDown color="#A0A0A0" size={16} />
+                <ChevronDown color={theme.colors.secondaryText} size={16} />
               </TouchableOpacity>
               <View style={{ width: 40 }} />
             </View>
@@ -245,7 +241,7 @@ export const TrackingScreen = () => {
               <Animated.Text
                 style={[
                   styles.amountText,
-                  { color: isValid ? '#FFFFFF' : 'rgba(255,255,255,0.4)', transform: [{ scale: amountScaleAnim }] },
+                  { color: isValid ? theme.colors.primaryText : theme.colors.secondaryText, transform: [{ scale: amountScaleAnim }] },
                 ]}
                 numberOfLines={1}
                 adjustsFontSizeToFit
@@ -304,7 +300,7 @@ export const TrackingScreen = () => {
             value={merchantName}
             onChangeText={setMerchantName}
             placeholder={txType === 'expense' ? 'Name (e.g. Netflix, rent)' : 'Name (optional)'}
-            placeholderTextColor="rgba(255,255,255,0.3)"
+            placeholderTextColor={theme.colors.secondaryText}
             maxLength={40}
             returnKeyType="next"
           />
@@ -315,7 +311,7 @@ export const TrackingScreen = () => {
             value={note}
             onChangeText={setNote}
             placeholder="Add a note..."
-                placeholderTextColor="rgba(255,255,255,0.3)"
+                placeholderTextColor={theme.colors.secondaryText}
                 maxLength={60}
                 returnKeyType="done"
                 blurOnSubmit
@@ -332,73 +328,16 @@ export const TrackingScreen = () => {
                         setPhotoUri(null);
                       }}
                     >
-                      <Trash2 color="#FFF" size={12} />
+                      <Trash2 color={theme.colors.primaryText} size={12} />
                     </TouchableOpacity>
                   </View>
                 ) : (
-                  <Camera color="#A0A0A0" size={20} />
+                  <Camera color={theme.colors.secondaryText} size={20} />
                 )}
               </TouchableOpacity>
             </View>
 
-            {/* Recurring payment */}
-            <View style={styles.recurringCard}>
-              <View style={styles.recurringTopRow}>
-                <View style={styles.recurringLabelBlock}>
-                  <View style={[styles.recurringIconWrap, isRecurring && styles.recurringIconWrapOn]}>
-                    <RefreshCcw color={isRecurring ? theme.colors.accent : '#A0A0A0'} size={18} strokeWidth={2} />
-                  </View>
-                  <View style={styles.recurringTextBlock}>
-                    <Text style={styles.recurringTitle}>Recurring payment</Text>
-                    <Text style={styles.recurringSubtitle}>
-                      {isRecurring ? 'Repeats on the schedule below' : 'Bill or income that happens again automatically'}
-                    </Text>
-                  </View>
-                </View>
-                <Switch
-                  value={isRecurring}
-                  onValueChange={v => {
-                    Haptics.selectionAsync();
-                    setIsRecurring(v);
-                  }}
-                  trackColor={{ false: 'rgba(255,255,255,0.12)', true: 'rgba(187,134,252,0.45)' }}
-                  thumbColor={isRecurring ? theme.colors.accent : '#8E8E93'}
-                  ios_backgroundColor="rgba(255,255,255,0.12)"
-                />
-              </View>
 
-              {isRecurring && (
-                <View style={styles.freqSection}>
-                  <Text style={styles.freqSectionLabel}>How often?</Text>
-                  <View style={styles.freqGrid}>
-                    {(
-                      [
-                        { key: 'daily' as const, label: 'Daily' },
-                        { key: 'weekly' as const, label: 'Weekly' },
-                        { key: 'monthly' as const, label: 'Monthly' },
-                        { key: 'yearly' as const, label: 'Yearly' },
-                      ] as const
-                    ).map(({ key, label }) => {
-                      const on = recurringFreq === key;
-                      return (
-                        <View key={key} style={styles.freqCell}>
-                          <TouchableOpacity
-                            style={[styles.freqCellInner, on && styles.freqCellInnerActive]}
-                            onPress={() => {
-                              Haptics.selectionAsync();
-                              setRecurringFreq(key);
-                            }}
-                            activeOpacity={0.75}
-                          >
-                            <Text style={[styles.freqCellText, on && styles.freqCellTextActive]}>{label}</Text>
-                          </TouchableOpacity>
-                        </View>
-                      );
-                    })}
-                  </View>
-                </View>
-              )}
-            </View>
           </ScrollView>
 
           {/* Fixed keypad + confirm — never overlaps scrollable form */}
@@ -430,17 +369,17 @@ export const TrackingScreen = () => {
               <TouchableOpacity
                 style={[
                   styles.confirmBtn,
-                  { backgroundColor: isValid ? mainColor : 'rgba(255,255,255,0.1)' },
+                  { backgroundColor: isValid ? mainColor : 'rgba(27,42,74,0.06)' },
                   confirming && { opacity: 0.7 },
                 ]}
                 disabled={!isValid || confirming}
                 onPress={handleConfirm}
                 activeOpacity={0.8}
               >
-                <Text style={[styles.confirmBtnText, { color: isValid ? '#121212' : '#666' }]}>
+                <Text style={[styles.confirmBtnText, { color: isValid ? '#FFF' : theme.colors.secondaryText }]}>
                   {confirming ? 'Saving...' : 'Add Transaction'}
                 </Text>
-                {isValid && !confirming && <ArrowRight color="#121212" size={20} />}
+                {isValid && !confirming && <ArrowRight color="#FFF" size={20} />}
               </TouchableOpacity>
             </View>
           </View>
@@ -467,7 +406,7 @@ const styles = StyleSheet.create({
   keypadFooter: {
     flexShrink: 0,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: 'rgba(255,255,255,0.06)',
+    borderTopColor: theme.colors.divider,
     backgroundColor: 'transparent',
   },
   topRow: {
@@ -481,21 +420,21 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: 'rgba(27,42,74,0.05)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
+    borderColor: theme.colors.divider,
     justifyContent: 'center',
     alignItems: 'center',
   },
   headerPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: 'rgba(27,42,74,0.05)',
     paddingVertical: 10,
     paddingHorizontal: 20,
     borderRadius: 24,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
+    borderColor: theme.colors.divider,
     gap: 8,
   },
   dot: {
@@ -506,7 +445,7 @@ const styles = StyleSheet.create({
   headerText: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#FFF',
+    color: theme.colors.primaryText,
   },
   displayArea: {
     alignItems: 'center',
@@ -540,12 +479,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderColor: theme.colors.divider,
+    backgroundColor: 'rgba(27,42,74,0.05)',
   },
   catText: {
     fontSize: 11,
-    color: '#A0A0A0',
+    color: theme.colors.secondaryText,
     fontWeight: '600',
   },
   nameRow: {
@@ -554,13 +493,13 @@ const styles = StyleSheet.create({
   },
   nameInput: {
     height: 44,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: 'rgba(27,42,74,0.05)',
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
+    borderColor: theme.colors.divider,
     paddingHorizontal: 14,
     fontSize: 14,
-    color: '#FFF',
+    color: theme.colors.primaryText,
   },
   extrasRow: {
     flexDirection: 'row',
@@ -572,21 +511,21 @@ const styles = StyleSheet.create({
   noteInput: {
     flex: 1,
     height: 50,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: 'rgba(27,42,74,0.05)',
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
+    borderColor: theme.colors.divider,
     paddingHorizontal: 16,
     fontSize: 15,
-    color: '#FFF',
+    color: theme.colors.primaryText,
   },
   photoBtn: {
     width: 50,
     height: 50,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: 'rgba(27,42,74,0.05)',
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
+    borderColor: theme.colors.divider,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -610,7 +549,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#121212',
+    borderColor: '#FFFFFF',
   },
   keypadArea: {
     paddingHorizontal: 24,
@@ -632,7 +571,7 @@ const styles = StyleSheet.create({
   },
   keypadText: {
     fontSize: 22,
-    color: '#FFF',
+    color: theme.colors.primaryText,
     fontWeight: '500',
   },
   bottomArea: {
@@ -647,9 +586,9 @@ const styles = StyleSheet.create({
     paddingVertical: 18,
     borderRadius: 24,
     gap: 10,
-    shadowColor: '#000',
+    shadowColor: '#1B2A4A',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.06,
     shadowRadius: 10,
     elevation: 8,
   },
@@ -657,14 +596,66 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '800',
   },
+  statusCard: {
+    marginHorizontal: 20,
+    marginBottom: 8,
+    padding: 16,
+    borderRadius: 16,
+    backgroundColor: 'rgba(27,42,74,0.05)',
+    borderWidth: 1,
+    borderColor: theme.colors.divider,
+  },
+  statusTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  statusTextBlock: {
+    flex: 1,
+    minWidth: 0,
+  },
+  statusTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: theme.colors.primaryText,
+    marginBottom: 2,
+  },
+  statusSubtitle: {
+    fontSize: 12,
+    color: theme.colors.secondaryText,
+    lineHeight: 16,
+  },
+  dueBtn: {
+    marginTop: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderRadius: 14,
+    backgroundColor: 'rgba(27,42,74,0.05)',
+    borderWidth: 1,
+    borderColor: theme.colors.divider,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  dueBtnText: {
+    color: theme.colors.secondaryText,
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  dueBtnAction: {
+    color: theme.colors.secondaryText,
+    fontSize: 12,
+    fontWeight: '800',
+  },
   recurringCard: {
     marginHorizontal: 20,
     marginBottom: 8,
     padding: 16,
     borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: 'rgba(27,42,74,0.05)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
+    borderColor: theme.colors.divider,
   },
   recurringTopRow: {
     flexDirection: 'row',
@@ -683,15 +674,15 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: 'rgba(27,42,74,0.05)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: theme.colors.divider,
     justifyContent: 'center',
     alignItems: 'center',
   },
   recurringIconWrapOn: {
-    backgroundColor: 'rgba(187,134,252,0.12)',
-    borderColor: 'rgba(187,134,252,0.35)',
+    backgroundColor: 'rgba(62,146,204,0.1)',
+    borderColor: 'rgba(62,146,204,0.2)',
   },
   recurringTextBlock: {
     flex: 1,
@@ -700,24 +691,24 @@ const styles = StyleSheet.create({
   recurringTitle: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: theme.colors.primaryText,
     marginBottom: 2,
   },
   recurringSubtitle: {
     fontSize: 12,
-    color: 'rgba(255,255,255,0.45)',
+    color: theme.colors.secondaryText,
     lineHeight: 16,
   },
   freqSection: {
     marginTop: 16,
     paddingTop: 16,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: 'rgba(255,255,255,0.1)',
+    borderTopColor: theme.colors.divider,
   },
   freqSectionLabel: {
     fontSize: 11,
     fontWeight: '700',
-    color: 'rgba(255,255,255,0.4)',
+    color: theme.colors.secondaryText,
     letterSpacing: 0.6,
     textTransform: 'uppercase',
     marginBottom: 10,
@@ -736,20 +727,20 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 8,
     borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: 'rgba(27,42,74,0.03)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: theme.colors.divider,
     alignItems: 'center',
     justifyContent: 'center',
   },
   freqCellInnerActive: {
-    backgroundColor: 'rgba(187,134,252,0.12)',
-    borderColor: 'rgba(187,134,252,0.45)',
+    backgroundColor: 'rgba(62,146,204,0.1)',
+    borderColor: 'rgba(62,146,204,0.2)',
   },
   freqCellText: {
     fontSize: 14,
     fontWeight: '600',
-    color: 'rgba(255,255,255,0.55)',
+    color: theme.colors.secondaryText,
   },
   freqCellTextActive: {
     color: theme.colors.accent,

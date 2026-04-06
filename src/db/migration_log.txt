@@ -1,0 +1,34 @@
+[SETUP] Creating missing Supabase RPC functions
+[SETUP] Target: https://bugfydhdoxuzdlagdiaw.supabase.co
+
+[STEP 1] Checking if exec_sql helper exists...
+[STEP 1] exec_sql not found. The functions need to be created via the SQL Editor.
+
+[ACTION REQUIRED]
+Please go to: https://supabase.com/dashboard/project/bugfydhdoxuzdlagdiaw/sql/new
+And paste the FULL contents of src/db/supabase_migration.sql
+Then click "Run"
+
+Alternatively, the functions are written below for individual pasting:
+
+--- add_transaction_with_streak ---
+
+--- stop_recurring ---
+
+--- resume_recurring ---
+
+--- redeem_reward ---
+
+--- change_currency ---
+
+--- seed_default_budgets ---
+
+[VERIFY] Checking all functions...
+  add_transaction_with_streak: MISSING
+  stop_recurring: MISSING
+  resume_recurring: MISSING
+  get_monthly_summary: EXISTS (200)
+  get_spending_history: EXISTS (200)
+  redeem_reward: MISSING
+  change_currency: MISSING
+  seed_default_budgets: MISSING

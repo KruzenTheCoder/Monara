@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Dimensions, TouchableOpacity } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import Svg, { Rect, Text as SvgText, Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
@@ -6,8 +6,8 @@ import { GlassBox } from '../components/GlassBox';
 import { AnimatedBackground } from '../components/AnimatedBackground';
 import { theme, formatCurrencyFull, getCategoryColor } from '../utils/theme';
 import { useFinancial } from '../context/FinancialContext';
-import { format, subMonths, isThisMonth, isSameMonth, getDate, getDaysInMonth } from 'date-fns';
-import { TrendingUp, TrendingDown, BarChart2, Activity, PieChart } from 'lucide-react-native';
+import { format, subMonths, addMonths, isThisMonth, isSameMonth, getDate, getDaysInMonth } from 'date-fns';
+import { TrendingUp, TrendingDown, BarChart2, Activity, PieChart, ChevronLeft, ChevronRight } from 'lucide-react-native';
 
 const SCREEN_W = Dimensions.get('window').width;
 const CHART_W = SCREEN_W - 80;
@@ -16,26 +16,42 @@ export const AnalyticsScreen = () => {
   const navigation = useNavigation<any>();
   const {
     transactions,
-    monthlyIncome,
-    monthlyExpenses,
-    savingsRate,
-    monthlySpendingByCategory,
-    monthlyEstimatedTax,
     user,
+    taxForTransaction
   } = useFinancial();
   const currency = user?.currency || 'USD';
+
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const isCurrentMonth = isSameMonth(currentDate, new Date());
+
+  const monthTransactions = useMemo(() => transactions.filter(t => isSameMonth(new Date(t.date), currentDate)), [transactions, currentDate]);
+  const lastMonthTransactions = useMemo(() => transactions.filter(t => isSameMonth(new Date(t.date), subMonths(currentDate, 1))), [transactions, currentDate]);
+
+  const monthlyIncome = monthTransactions.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+  const monthlyExpenses = monthTransactions.filter(t => t.type === 'expense' && t.category !== 'Savings Contribution').reduce((s, t) => s + t.amount, 0);
+  const savingsContributions = monthTransactions.filter(t => t.type === 'expense' && t.category === 'Savings Contribution').reduce((s, t) => s + t.amount, 0);
+  const monthlyEstimatedTax = monthTransactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + taxForTransaction(t), 0);
+
+  const lastMonthExpenses = lastMonthTransactions.filter(t => t.type === 'expense' && t.category !== 'Savings Contribution').reduce((s, t) => s + t.amount, 0);
+
+  const savingsRate = monthlyIncome > 0 ? (savingsContributions / monthlyIncome) * 100 : 0;
+
+  const monthlySpendingByCategory = monthTransactions.filter(t => t.type === 'expense').reduce((acc, t) => {
+    acc[t.category] = (acc[t.category] || 0) + t.amount;
+    return acc;
+  }, {} as Record<string, number>);
 
   const months = useMemo(() => {
     const result = [];
     for (let i = 5; i >= 0; i--) {
-      const date = subMonths(new Date(), i);
+      const date = subMonths(currentDate, i);
       const monthTxs = transactions.filter(t => isSameMonth(new Date(t.date), date));
       const income = monthTxs.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
       const expense = monthTxs.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
       result.push({ label: format(date, 'MMM'), income, expense, date });
     }
     return result;
-  }, [transactions]);
+  }, [transactions, currentDate]);
 
   const maxVal = useMemo(() => Math.max(...months.flatMap(m => [m.income, m.expense]), 1), [months]);
 
@@ -48,16 +64,13 @@ export const AnalyticsScreen = () => {
   const totalCatSpend = catEntries.reduce((s, [, v]) => s + v, 0);
 
   // Month-over-Month logic
-  const currentMonthData = months[5];
-  const lastMonthData = months[4];
-  const momExpenseChange = (lastMonthData && lastMonthData.expense > 0)
-    ? ((currentMonthData.expense - lastMonthData.expense) / lastMonthData.expense) * 100 
+  const momExpenseChange = (lastMonthExpenses > 0)
+    ? ((monthlyExpenses - lastMonthExpenses) / lastMonthExpenses) * 100
     : 0;
 
   // Daily Average
-  const today = new Date();
-  const daysPassed = getDate(today);
-  const dailyAverage = monthlyExpenses / Math.max(daysPassed, 1);
+  const daysPassed = isCurrentMonth ? Math.max(getDate(new Date()), 1) : getDaysInMonth(currentDate);
+  const dailyAverage = monthlyExpenses / daysPassed;
 
   const BAR_H = 120;
   const BAR_W = Math.floor((CHART_W - 10) / 6 / 3);
@@ -71,7 +84,25 @@ export const AnalyticsScreen = () => {
       >
         <View style={styles.header}>
           <Text style={styles.title}>Analytics & Reports</Text>
-          <Text style={theme.typography.label}>{format(new Date(), 'MMMM yyyy')}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
+            <Text style={theme.typography.label}>Insights for tracking your progress</Text>
+
+            <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: theme.colors.surface, borderRadius: 16, padding: 4 }}>
+              <TouchableOpacity onPress={() => setCurrentDate(subMonths(currentDate, 1))} style={{ padding: 4 }}>
+                <ChevronLeft color={theme.colors.secondaryText} size={18} />
+              </TouchableOpacity>
+              <Text style={{ color: theme.colors.primaryText, fontWeight: '600', fontSize: 13, minWidth: 65, textAlign: 'center' }}>
+                {format(currentDate, 'MMM yyyy')}
+              </Text>
+              <TouchableOpacity
+                onPress={() => setCurrentDate(addMonths(currentDate, 1))}
+                style={{ padding: 4, opacity: isCurrentMonth ? 0.3 : 1 }}
+                disabled={isCurrentMonth}
+              >
+                <ChevronRight color={isCurrentMonth ? theme.colors.divider : theme.colors.secondaryText} size={18} />
+              </TouchableOpacity>
+            </View>
+          </View>
         </View>
 
         {/* Monthly Summary Cards */}
@@ -116,14 +147,14 @@ export const AnalyticsScreen = () => {
             <Text style={styles.insightValue}>{formatCurrencyFull(dailyAverage, currency)}</Text>
             <Text style={styles.insightSub}>Based on {daysPassed} days</Text>
           </GlassBox>
-          
+
           <GlassBox style={styles.insightBox}>
             <View style={[styles.insightIconWrap, { backgroundColor: 'rgba(255,183,77,0.1)' }]}>
               <PieChart color="#FFB74D" size={16} />
             </View>
             <Text style={styles.insightLabel}>MoM Expense</Text>
             <Text style={[
-              styles.insightValue, 
+              styles.insightValue,
               { color: momExpenseChange > 0 ? theme.colors.status.red : theme.colors.status.green }
             ]}>
               {momExpenseChange > 0 ? '+' : ''}{momExpenseChange.toFixed(1)}%
@@ -243,7 +274,7 @@ export const AnalyticsScreen = () => {
                       <SvgText
                         x={x + BAR_W}
                         y={BAR_H + 18}
-                        fill="rgba(255,255,255,0.5)"
+                        fill="rgba(27,42,74,0.5)"
                         fontSize="11"
                         textAnchor="middle"
                       >
@@ -285,7 +316,7 @@ export const AnalyticsScreen = () => {
                 <TouchableOpacity
                   key={cat}
                   activeOpacity={0.8}
-                  onPress={() => navigation.navigate('CategoryTransactions', { category: cat })}
+                    onPress={() => navigation.navigate('CategoryTransactions', { category: cat, monthStart: format(currentDate, 'yyyy-MM-01') })}
                   style={[styles.catRow, i < catEntries.length - 1 && styles.catDivider]}
                 >
                   <View style={styles.catLeft}>
@@ -313,20 +344,20 @@ export const AnalyticsScreen = () => {
         )}
 
         {/* Activity snapshot — aligned with top summary cards */}
-        <Text style={styles.sectionTitle}>Activity</Text>
+        <Text style={styles.sectionTitle}>Activity Overview</Text>
         <View style={styles.snapRow}>
           <GlassBox style={styles.snapCard}>
-            <Text style={styles.snapLabel}>Total</Text>
-            <Text style={styles.snapValue}>{transactions.length}</Text>
+            <Text style={styles.snapLabel}>Transactions</Text>
+            <Text style={styles.snapValue}>{monthTransactions.length}</Text>
           </GlassBox>
           <GlassBox style={styles.snapCard}>
-            <Text style={styles.snapLabel}>This month</Text>
-            <Text style={styles.snapValue}>
-              {transactions.filter(t => isThisMonth(new Date(t.date))).length}
+            <Text style={styles.snapLabel}>vs Last Month</Text>
+            <Text style={[styles.snapValue, { color: monthTransactions.length >= lastMonthTransactions.length ? theme.colors.status.green : theme.colors.status.amber }]}>
+              {monthTransactions.length >= lastMonthTransactions.length ? '+' : ''}{monthTransactions.length - lastMonthTransactions.length}
             </Text>
           </GlassBox>
           <GlassBox style={styles.snapCard}>
-            <Text style={styles.snapLabel}>Savings</Text>
+            <Text style={styles.snapLabel}>Savings Rate</Text>
             <Text style={[styles.snapValue, { color: theme.colors.accent }]}>{savingsRate.toFixed(0)}%</Text>
           </GlassBox>
         </View>
@@ -347,7 +378,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: theme.colors.primaryText,
     letterSpacing: -0.5,
     marginBottom: 2,
   },
@@ -364,7 +395,7 @@ const styles = StyleSheet.create({
   },
   summaryLabel: {
     fontSize: 11,
-    color: '#A0A0A0',
+    color: theme.colors.secondaryText,
     marginTop: 2,
   },
   summaryVal: {
@@ -402,13 +433,13 @@ const styles = StyleSheet.create({
   },
   insightLabel: {
     fontSize: 12,
-    color: '#A0A0A0',
+    color: theme.colors.secondaryText,
     marginBottom: 4,
   },
   insightValue: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: theme.colors.primaryText,
     marginBottom: 4,
   },
   insightSub: {
@@ -433,7 +464,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     borderRadius: 4,
     overflow: 'hidden',
-    backgroundColor: '#2C2C2C',
+    backgroundColor: theme.colors.surfaceSecondary,
     marginBottom: 10,
   },
   netBarIncome: {
@@ -461,7 +492,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: theme.colors.primaryText,
     marginBottom: 12,
   },
   chartCard: {
@@ -487,7 +518,7 @@ const styles = StyleSheet.create({
   },
   catDivider: {
     borderBottomWidth: 1,
-    borderBottomColor: '#2C2C2C',
+    borderBottomColor: theme.colors.divider,
   },
   catLeft: {
     flexDirection: 'row',
@@ -502,7 +533,7 @@ const styles = StyleSheet.create({
   },
   catName: {
     fontSize: 12,
-    color: '#FFFFFF',
+    color: theme.colors.primaryText,
     fontWeight: '500',
     flexShrink: 1,
   },
@@ -511,7 +542,7 @@ const styles = StyleSheet.create({
   },
   catBarBg: {
     height: 6,
-    backgroundColor: '#2C2C2C',
+    backgroundColor: theme.colors.surfaceSecondary,
     borderRadius: 3,
     overflow: 'hidden',
   },
@@ -526,7 +557,7 @@ const styles = StyleSheet.create({
   catAmount: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: theme.colors.primaryText,
   },
   emptyCard: {
     paddingVertical: 16,
@@ -550,7 +581,7 @@ const styles = StyleSheet.create({
   snapLabel: {
     fontSize: 10,
     fontWeight: '600',
-    color: '#A0A0A0',
+    color: theme.colors.secondaryText,
     textTransform: 'uppercase',
     letterSpacing: 0.4,
     textAlign: 'center',
@@ -558,7 +589,7 @@ const styles = StyleSheet.create({
   snapValue: {
     fontSize: 17,
     fontWeight: '800',
-    color: '#FFFFFF',
+    color: theme.colors.primaryText,
     textAlign: 'center',
   },
 });

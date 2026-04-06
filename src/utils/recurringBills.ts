@@ -44,6 +44,8 @@ export function buildUpcomingBills(transactions: Transaction[], limit = 20): Upc
 
   for (const t of transactions) {
     if (t.type !== 'expense' || !t.recurring?.frequency) continue;
+    // Skip stopped recurring payments
+    if (t.recurring.stopped_at) continue;
     const freq = t.recurring.frequency;
     const anchor = new Date(t.date);
     const nextDue = getNextDueDate(anchor, freq, now);

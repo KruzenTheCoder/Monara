@@ -1,5 +1,6 @@
-import { Alert, ActionSheetIOS, Platform } from 'react-native';
+import { ActionSheetIOS, Platform } from 'react-native';
 import { Transaction } from '../types';
+import { showStyledAlert } from '../components/StyledAlert';
 
 /**
  * Long-press menu: Edit or Delete (delete confirms in a second alert).
@@ -11,13 +12,14 @@ export function showTransactionActionMenu(
   onDelete: () => void,
 ): void {
   const confirmDelete = () => {
-    Alert.alert(
+    showStyledAlert(
       'Delete transaction?',
       'This cannot be undone.',
       [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Delete', style: 'destructive', onPress: onDelete },
       ],
+      'destructive',
     );
   };
 
@@ -36,14 +38,14 @@ export function showTransactionActionMenu(
       },
     );
   } else {
-    Alert.alert(
+    showStyledAlert(
       title,
       'What would you like to do?',
       [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Edit details', onPress: onEdit },
         { text: 'Delete permanently', style: 'destructive', onPress: confirmDelete },
-      ]
+      ],
     );
   }
 }
