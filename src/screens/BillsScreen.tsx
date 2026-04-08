@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -12,7 +12,7 @@ import {
   Pressable,
   Image,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { format } from 'date-fns';
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
@@ -58,6 +58,7 @@ const defaultDraft = (): Draft => ({
 
 export const BillsScreen: React.FC = () => {
   const navigation = useNavigation<any>();
+  const route = useRoute<any>();
   const { upcomingBills, addBill, updateBill, deleteBill, markBillPaid, user } = useFinancial();
   const currency = user.currency || 'USD';
 
@@ -73,12 +74,21 @@ export const BillsScreen: React.FC = () => {
   const [proofViewerUri, setProofViewerUri] = useState<string | null>(null);
 
   const rows = useMemo(() => upcomingBills, [upcomingBills]);
+  const openedFromParam = useRef(false);
 
   const openCreate = () => {
     Haptics.selectionAsync();
     setDraft(defaultDraft());
     setIsEditing(true);
   };
+
+  useEffect(() => {
+    const shouldOpen = !!route?.params?.openCreate;
+    if (!shouldOpen || openedFromParam.current) return;
+    openedFromParam.current = true;
+    openCreate();
+    navigation.setParams({ openCreate: undefined });
+  }, [navigation, route?.params?.openCreate]);
 
   const openEdit = (bill: Bill) => {
     Haptics.selectionAsync();
@@ -186,7 +196,7 @@ export const BillsScreen: React.FC = () => {
         </View>
         <TouchableOpacity style={styles.addBtn} onPress={openCreate} activeOpacity={0.85}>
           <LinearGradient colors={[theme.colors.accent, '#1B2A4A']} style={styles.addBtnGradient}>
-            <Plus color={theme.colors.primaryText} size={18} strokeWidth={3} />
+            <Plus color="#FFF" size={18} strokeWidth={3} />
           </LinearGradient>
         </TouchableOpacity>
       </View>
@@ -627,7 +637,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   primaryCtaText: {
-    color: theme.colors.primaryText,
+    color: '#FFF',
     fontWeight: '800',
     fontSize: 14,
   },

@@ -298,13 +298,13 @@ export const RewardsScreen = () => {
 const styles = StyleSheet.create({
   container: { padding: 16, paddingTop: 45, paddingBottom: 140 },
   header: { marginBottom: 16 },
-  title: { fontSize: 24, fontWeight: 'bold', color: theme.colors.primaryText, letterSpacing: -0.5, marginBottom: 2 },
+  title: { fontSize: 24, fontWeight: '800', color: theme.colors.primaryText, letterSpacing: -0.6, marginBottom: 2 },
 
   /* Level */
   levelCard: { marginBottom: 12 },
   levelHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 14 },
   levelBadge: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  levelTitle: { fontSize: 20, fontWeight: '800', color: theme.colors.primaryText, letterSpacing: -0.5 },
+  levelTitle: { fontSize: 20, fontWeight: '800', color: theme.colors.primaryText, letterSpacing: -0.6 },
   tierLabel: { fontSize: 13, fontWeight: '700', marginTop: 1 },
   xpPill: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(251,191,36,0.1)', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12 },
   xpPillText: { fontSize: 13, fontWeight: '800', color: '#FBBF24' },
@@ -346,7 +346,7 @@ const styles = StyleSheet.create({
   weeklyBonusText: { fontSize: 11, fontWeight: '600', color: theme.colors.secondaryText },
 
   /* Badges */
-  sectionTitle: { fontSize: 16, fontWeight: '700', color: theme.colors.primaryText, marginBottom: 10 },
+  sectionTitle: { fontSize: 17, fontWeight: '800', letterSpacing: -0.3, color: theme.colors.primaryText, marginBottom: 10 },
   badgeScroll: { marginBottom: 10 },
   badgeCard: { width: 120, marginRight: 10, alignItems: 'center', paddingVertical: 14, paddingHorizontal: 8 },
   badgeEmoji: { fontSize: 28, marginBottom: 6 },
@@ -368,7 +368,7 @@ const styles = StyleSheet.create({
   /* Marketplace */
   marketplaceCard: { alignItems: 'center', paddingVertical: 32, marginBottom: 16 },
   marketplaceIcon: { width: 56, height: 56, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginBottom: 14 },
-  marketplaceTitle: { fontSize: 18, fontWeight: '700', color: theme.colors.primaryText, marginBottom: 6 },
+  marketplaceTitle: { fontSize: 18, fontWeight: '800', letterSpacing: -0.3, color: theme.colors.primaryText, marginBottom: 6 },
   marketplaceDesc: { fontSize: 13, color: theme.colors.secondaryText, textAlign: 'center', paddingHorizontal: 20 },
 
   /* Stats */

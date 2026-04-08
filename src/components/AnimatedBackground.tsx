@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useMemo } from 'react';
 import { View, StyleSheet, Animated, Dimensions, Easing } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { theme } from '../utils/theme';
 import {
   DollarSign, CreditCard, PiggyBank, Wallet, TrendingUp,
@@ -25,9 +26,10 @@ interface FloatingIconProps {
   index: number;
   total: number;
   color: string;
+  opacityScale: number;
 }
 
-const FloatingIcon: React.FC<FloatingIconProps> = React.memo(({ Icon, index, total, color }) => {
+const FloatingIcon: React.FC<FloatingIconProps> = React.memo(({ Icon, index, total, color, opacityScale }) => {
   const fadeIn = useRef(new Animated.Value(0)).current;
   const driftX = useRef(new Animated.Value(0)).current;
   const driftY = useRef(new Animated.Value(0)).current;
@@ -47,6 +49,7 @@ const FloatingIcon: React.FC<FloatingIconProps> = React.memo(({ Icon, index, tot
 
   const size = 76 + seeded(index, 3) * 48;
   const baseOpacity = 0.045 + seeded(index, 4) * 0.045;
+  const targetOpacity = Math.min(baseOpacity * opacityScale, 0.16);
   const durationX = 14000 + seeded(index, 5) * 12000;
   const durationY = 16000 + seeded(index, 6) * 14000;
   const durationR = 22000 + seeded(index, 7) * 16000;
@@ -59,7 +62,7 @@ const FloatingIcon: React.FC<FloatingIconProps> = React.memo(({ Icon, index, tot
     const smooth = Easing.bezier(0.45, 0.05, 0.55, 0.95);
 
     Animated.timing(fadeIn, {
-      toValue: baseOpacity,
+      toValue: targetOpacity,
       duration: 1600 + delay,
       delay,
       easing: Easing.out(Easing.cubic),
@@ -111,13 +114,16 @@ const FloatingIcon: React.FC<FloatingIconProps> = React.memo(({ Icon, index, tot
   );
 });
 
-export const AnimatedBackground: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const isDark = theme.isDark;
-  const iconColor = isDark ? '#FFFFFF' : '#1B2A4A';
+export const AnimatedBackground: React.FC<{
+  children: React.ReactNode;
+  iconColor?: string;
+  iconOpacityScale?: number;
+}> = ({ children, iconColor: iconColorProp, iconOpacityScale = 1 }) => {
+  const iconColor = iconColorProp ?? theme.colors.accent;
 
-  // Generate 20 floating icons spread across the screen
+  // Generate 15 floating icons spread across the screen
   const icons = useMemo(() => {
-    const count = 20;
+    const count = 15;
     return Array.from({ length: count }, (_, i) => ({
       Icon: ICONS[i % ICONS.length],
       index: i,
@@ -127,6 +133,17 @@ export const AnimatedBackground: React.FC<{ children: React.ReactNode }> = ({ ch
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.backgroundStart }]}>
+      {/* Subtle radial ambient glow for depth */}
+      <LinearGradient
+        colors={[
+          theme.isDark ? 'rgba(62,146,204,0.06)' : 'rgba(62,146,204,0.04)',
+          'transparent',
+        ]}
+        start={{ x: 0.5, y: 0 }}
+        end={{ x: 0.5, y: 0.6 }}
+        style={styles.ambientGlow}
+        pointerEvents="none"
+      />
       <View style={styles.iconField} pointerEvents="none">
         {icons.map(({ Icon, index, total }) => (
           <FloatingIcon
@@ -135,6 +152,7 @@ export const AnimatedBackground: React.FC<{ children: React.ReactNode }> = ({ ch
             index={index}
             total={total}
             color={iconColor}
+            opacityScale={iconOpacityScale}
           />
         ))}
       </View>
@@ -146,6 +164,9 @@ export const AnimatedBackground: React.FC<{ children: React.ReactNode }> = ({ ch
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  ambientGlow: {
+    ...StyleSheet.absoluteFillObject,
   },
   iconField: {
     ...StyleSheet.absoluteFillObject,

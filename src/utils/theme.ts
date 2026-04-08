@@ -12,11 +12,13 @@ export interface ThemeColors {
   glassBorder: string;
   glassBorderTop: string;
   accent: string;
+  accentSecondary: string;
   accentGlow: string;
   navy: string;
   navyLight: string;
   surface: string;
   surfaceSecondary: string;
+  surfaceElevated: string;
   divider: string;
   overlayBg: string;
   status: {
@@ -57,26 +59,28 @@ const SHARED_CATEGORIES: ThemeColors['category'] = {
 
 /* ── Light palette ── */
 const LIGHT_COLORS: ThemeColors = {
-  backgroundStart: '#FAFAFC',
-  backgroundEnd: '#F0F1F5',
-  backgroundMid: '#F5F5F8',
-  primaryText: '#1B2A4A',
-  secondaryText: '#6B7B98',
-  glassBackground: 'rgba(255, 255, 255, 0.72)',
-  glassBorder: 'rgba(27, 42, 74, 0.06)',
-  glassBorderTop: 'rgba(27, 42, 74, 0.10)',
+  backgroundStart: '#F8F9FC',
+  backgroundEnd: '#EEF0F5',
+  backgroundMid: '#F3F4F8',
+  primaryText: '#0F1A2E',
+  secondaryText: '#5E6E8A',
+  glassBackground: 'rgba(255, 255, 255, 0.78)',
+  glassBorder: 'rgba(27, 42, 74, 0.07)',
+  glassBorderTop: 'rgba(255, 255, 255, 0.95)',
   accent: '#3E92CC',
+  accentSecondary: '#2B7AB5',
   accentGlow: 'rgba(62, 146, 204, 0.25)',
-  navy: '#1B2A4A',
-  navyLight: '#203058',
+  navy: '#0F1A2E',
+  navyLight: '#1B2A4A',
   surface: '#FFFFFF',
-  surfaceSecondary: '#F0F1F5',
-  divider: 'rgba(27, 42, 74, 0.06)',
-  overlayBg: 'rgba(27, 42, 74, 0.25)',
+  surfaceSecondary: '#F0F2F7',
+  surfaceElevated: '#FFFFFF',
+  divider: 'rgba(15, 26, 46, 0.06)',
+  overlayBg: 'rgba(15, 26, 46, 0.35)',
   status: {
-    green: '#2DA86B', greenGlow: 'rgba(45, 168, 107, 0.2)',
-    amber: '#E8920D', amberGlow: 'rgba(232, 146, 13, 0.2)',
-    red:   '#D94040', redGlow:   'rgba(217, 64, 64, 0.2)',
+    green: '#22C55E', greenGlow: 'rgba(34, 197, 94, 0.15)',
+    amber: '#F59E0B', amberGlow: 'rgba(245, 158, 11, 0.15)',
+    red:   '#EF4444', redGlow:   'rgba(239, 68, 68, 0.15)',
   },
   themes: SHARED_THEMES,
   category: SHARED_CATEGORIES,
@@ -84,30 +88,107 @@ const LIGHT_COLORS: ThemeColors = {
 
 /* ── Dark palette ── */
 const DARK_COLORS: ThemeColors = {
-  backgroundStart: '#0A0A0F',
-  backgroundEnd: '#0F0F14',
-  backgroundMid: '#111118',
-  primaryText: '#F0F1F5',
-  secondaryText: '#8B95A8',
-  glassBackground: 'rgba(255, 255, 255, 0.06)',
+  backgroundStart: '#08080D',
+  backgroundEnd: '#0D0D12',
+  backgroundMid: '#0A0A10',
+  primaryText: '#F2F3F7',
+  secondaryText: '#7B879E',
+  glassBackground: 'rgba(255, 255, 255, 0.05)',
   glassBorder: 'rgba(255, 255, 255, 0.08)',
-  glassBorderTop: 'rgba(255, 255, 255, 0.12)',
-  accent: '#3E92CC',
-  accentGlow: 'rgba(62, 146, 204, 0.3)',
+  glassBorderTop: 'rgba(255, 255, 255, 0.14)',
+  accent: '#4A9ED6',
+  accentSecondary: '#3E92CC',
+  accentGlow: 'rgba(74, 158, 214, 0.3)',
   navy: '#1B2A4A',
   navyLight: '#203058',
-  surface: '#16161D',
-  surfaceSecondary: '#1C1C25',
-  divider: 'rgba(255, 255, 255, 0.06)',
-  overlayBg: 'rgba(0, 0, 0, 0.55)',
+  surface: '#131318',
+  surfaceSecondary: '#1A1A22',
+  surfaceElevated: '#1E1E28',
+  divider: 'rgba(255, 255, 255, 0.07)',
+  overlayBg: 'rgba(0, 0, 0, 0.65)',
   status: {
-    green: '#34D399', greenGlow: 'rgba(52, 211, 153, 0.2)',
-    amber: '#FBBF24', amberGlow: 'rgba(251, 191, 36, 0.2)',
-    red:   '#F87171', redGlow:   'rgba(248, 113, 113, 0.2)',
+    green: '#34D399', greenGlow: 'rgba(52, 211, 153, 0.18)',
+    amber: '#FBBF24', amberGlow: 'rgba(251, 191, 36, 0.18)',
+    red:   '#F87171', redGlow:   'rgba(248, 113, 113, 0.18)',
   },
   themes: SHARED_THEMES,
   category: SHARED_CATEGORIES,
 };
+
+/* ── Spacing scale (4-pt grid) ── */
+export const spacing = {
+  xs: 4,
+  sm: 8,
+  md: 12,
+  lg: 16,
+  xl: 20,
+  '2xl': 24,
+  '3xl': 32,
+  '4xl': 40,
+  '5xl': 48,
+} as const;
+
+/* ── Shared gradient tuples for brand consistency ── */
+export const gradients = {
+  accent: ['#3E92CC', '#2B7AB5'] as const,
+  accentVibrant: ['#4A9ED6', '#2B7AB5', '#1B6A9E'] as const,
+  navy: ['#1B2A4A', '#0F1A2E'] as const,
+  gold: ['#F59E0B', '#D97706'] as const,
+  success: ['#22C55E', '#16A34A'] as const,
+  danger: ['#EF4444', '#DC2626'] as const,
+  premium: ['#3E92CC', '#7C5CC4'] as const,
+  glass: ['rgba(255,255,255,0.12)', 'rgba(255,255,255,0.04)'] as const,
+};
+
+/* ── Shadow presets ── */
+export const shadows = {
+  sm: {
+    shadowColor: '#0F1A2E',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  md: {
+    shadowColor: '#0F1A2E',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  lg: {
+    shadowColor: '#0F1A2E',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.1,
+    shadowRadius: 24,
+    elevation: 8,
+  },
+  xl: {
+    shadowColor: '#0F1A2E',
+    shadowOffset: { width: 0, height: 16 },
+    shadowOpacity: 0.14,
+    shadowRadius: 32,
+    elevation: 12,
+  },
+  glow: (color: string, opacity = 0.35) => ({
+    shadowColor: color,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: opacity,
+    shadowRadius: 16,
+    elevation: 10,
+  }),
+};
+
+/* ── Border-radius presets ── */
+export const radii = {
+  sm: 8,
+  md: 12,
+  lg: 16,
+  xl: 20,
+  '2xl': 24,
+  '3xl': 32,
+  full: 999,
+} as const;
 
 /* ── Mutable singleton ── */
 export const theme = {
@@ -115,19 +196,20 @@ export const theme = {
   isDark: false,
   colors: { ...LIGHT_COLORS },
   typography: {
-    h1:    { fontSize: 24, fontWeight: 'bold' as const, color: LIGHT_COLORS.primaryText, letterSpacing: -0.5 },
-    h2:    { fontSize: 16, fontWeight: '600' as const,  color: LIGHT_COLORS.primaryText },
-    body:  { fontSize: 14, fontWeight: '400' as const,  color: LIGHT_COLORS.primaryText },
-    label: { fontSize: 12, fontWeight: '400' as const,  color: LIGHT_COLORS.secondaryText },
-    mono:  { fontSize: 20, fontWeight: 'bold' as const, color: LIGHT_COLORS.primaryText, letterSpacing: -1 },
+    h1:    { fontSize: 26, fontWeight: '800' as const, color: LIGHT_COLORS.primaryText, letterSpacing: -0.8 },
+    h2:    { fontSize: 17, fontWeight: '700' as const,  color: LIGHT_COLORS.primaryText, letterSpacing: -0.3 },
+    body:  { fontSize: 14, fontWeight: '400' as const,  color: LIGHT_COLORS.primaryText, lineHeight: 20 },
+    label: { fontSize: 12, fontWeight: '500' as const,  color: LIGHT_COLORS.secondaryText, letterSpacing: 0.2 },
+    mono:  { fontSize: 22, fontWeight: '800' as const, color: LIGHT_COLORS.primaryText, letterSpacing: -1.2 },
+    caption: { fontSize: 11, fontWeight: '600' as const, color: LIGHT_COLORS.secondaryText, letterSpacing: 0.5, textTransform: 'uppercase' as const },
   },
   glassmorphism: {
     borderWidth: 1,
-    borderRadius: 16,
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
+    borderRadius: 20,
+    shadowColor: '#0F1A2E',
+    shadowOpacity: 0.08,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 6 },
   },
 };
 
@@ -136,21 +218,21 @@ export function applyPalette(mode: 'light' | 'dark') {
   const src = mode === 'dark' ? DARK_COLORS : LIGHT_COLORS;
   theme.isDark = mode === 'dark';
   Object.assign(theme.colors, src);
-  // Replace typography objects entirely (RN freezes style objects after render)
   theme.typography = {
-    h1:    { fontSize: 24, fontWeight: 'bold' as const, color: src.primaryText, letterSpacing: -0.5 },
-    h2:    { fontSize: 16, fontWeight: '600' as const,  color: src.primaryText },
-    body:  { fontSize: 14, fontWeight: '400' as const,  color: src.primaryText },
-    label: { fontSize: 12, fontWeight: '400' as const,  color: src.secondaryText },
-    mono:  { fontSize: 20, fontWeight: 'bold' as const, color: src.primaryText, letterSpacing: -1 },
+    h1:    { fontSize: 26, fontWeight: '800' as const, color: src.primaryText, letterSpacing: -0.8 },
+    h2:    { fontSize: 17, fontWeight: '700' as const,  color: src.primaryText, letterSpacing: -0.3 },
+    body:  { fontSize: 14, fontWeight: '400' as const,  color: src.primaryText, lineHeight: 20 },
+    label: { fontSize: 12, fontWeight: '500' as const,  color: src.secondaryText, letterSpacing: 0.2 },
+    mono:  { fontSize: 22, fontWeight: '800' as const, color: src.primaryText, letterSpacing: -1.2 },
+    caption: { fontSize: 11, fontWeight: '600' as const, color: src.secondaryText, letterSpacing: 0.5, textTransform: 'uppercase' as const },
   };
   theme.glassmorphism = {
     borderWidth: 1,
-    borderRadius: 16,
-    shadowColor: mode === 'dark' ? '#000' : '#1B2A4A',
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
+    borderRadius: 20,
+    shadowColor: mode === 'dark' ? '#000' : '#0F1A2E',
+    shadowOpacity: 0.08,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 6 },
   };
 }
 

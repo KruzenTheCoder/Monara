@@ -5,7 +5,8 @@ import { BlurView } from 'expo-blur';
 import { GlassBox } from '../components/GlassBox';
 import { TransactionEditModal } from '../components/TransactionEditModal';
 import { AnimatedBackground } from '../components/AnimatedBackground';
-import { theme, formatCurrencyFull, getCategoryColor } from '../utils/theme';
+import { LinearGradient } from 'expo-linear-gradient';
+import { theme, formatCurrencyFull, getCategoryColor, gradients } from '../utils/theme';
 import { useFinancial } from '../context/FinancialContext';
 import { useGamification } from '../context/GamificationContext';
 import { TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight, Sparkles, Settings, ChevronRight, Bell, MessageSquare, X, Trash2, Calendar, Heart, Flame, Star } from 'lucide-react-native';
@@ -332,57 +333,66 @@ export const HomeScreen = () => {
           </View>
         </Modal>
 
-        {/* Balance Card */}
+        {/* Balance Card — Premium Gradient */}
         <Animated.View style={{ opacity: anims[1].opacity, transform: [{ translateY: anims[1].translateY }] }}>
-          <GlassBox style={styles.balanceCard}>
-            <Text style={styles.balanceLabel}>Total Balance</Text>
-            <Text
-              style={[
-                styles.balanceAmount,
-                { color: (balance || 0) >= 0 ? theme.colors.primaryText : theme.colors.status.red },
-              ]}
-              numberOfLines={1}
-              adjustsFontSizeToFit
-              minimumFontScale={0.5}
+          <View style={styles.balanceCardOuter}>
+            <LinearGradient
+              colors={theme.isDark ? ['#1B2A4A', '#0F1A2E'] : ['#1B2A4A', '#0F1A2E']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.balanceGradient}
             >
-              {(balance || 0) < 0 ? '-' : ''}{formatCurrencyFull(balance || 0, currency)}
-            </Text>
-            <View style={styles.statsRow}>
-              <TouchableOpacity style={styles.statItem} onPress={() => openAddTransaction('income')} activeOpacity={0.7}>
-                <View style={[styles.statIcon, styles.statIconIncome]}>
-                  <ArrowUpRight color={theme.colors.status.green} size={16} />
-                </View>
-                <View style={styles.statTextGroup}>
-                  <Text style={styles.statLabel}>Income</Text>
-                  <Text
-                    style={styles.statValue}
-                    numberOfLines={1}
-                    adjustsFontSizeToFit
-                    minimumFontScale={0.65}
-                  >
-                    {formatCurrencyFull(monthlyIncome, currency)}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-              <View style={styles.statDivider} />
-              <TouchableOpacity style={styles.statItem} onPress={() => openAddTransaction('expense')} activeOpacity={0.7}>
-                <View style={[styles.statIcon, styles.statIconExpense]}>
-                  <ArrowDownRight color={theme.colors.status.red} size={16} />
-                </View>
-                <View style={styles.statTextGroup}>
-                  <Text style={styles.statLabel}>Expenses</Text>
-                  <Text
-                    style={styles.statValue}
-                    numberOfLines={1}
-                    adjustsFontSizeToFit
-                    minimumFontScale={0.65}
-                  >
-                    {formatCurrencyFull(monthlyExpenses, currency)}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            </View>
-          </GlassBox>
+              {/* Subtle accent glow overlay */}
+              <View style={styles.balanceGlow} />
+              <Text style={styles.balanceLabel}>Total Balance</Text>
+              <Text
+                style={[
+                  styles.balanceAmount,
+                  (balance || 0) < 0 && { color: '#F87171' },
+                ]}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.5}
+              >
+                {(balance || 0) < 0 ? '-' : ''}{formatCurrencyFull(balance || 0, currency)}
+              </Text>
+              <View style={styles.statsRow}>
+                <TouchableOpacity style={styles.statItem} onPress={() => openAddTransaction('income')} activeOpacity={0.7}>
+                  <View style={[styles.statIcon, styles.statIconIncome]}>
+                    <ArrowUpRight color="#34D399" size={16} />
+                  </View>
+                  <View style={styles.statTextGroup}>
+                    <Text style={styles.statLabel}>Income</Text>
+                    <Text
+                      style={styles.statValue}
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
+                      minimumFontScale={0.65}
+                    >
+                      {formatCurrencyFull(monthlyIncome, currency)}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+                <View style={styles.statDivider} />
+                <TouchableOpacity style={styles.statItem} onPress={() => openAddTransaction('expense')} activeOpacity={0.7}>
+                  <View style={[styles.statIcon, styles.statIconExpense]}>
+                    <ArrowDownRight color="#F87171" size={16} />
+                  </View>
+                  <View style={styles.statTextGroup}>
+                    <Text style={styles.statLabel}>Expenses</Text>
+                    <Text
+                      style={styles.statValue}
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
+                      minimumFontScale={0.65}
+                    >
+                      {formatCurrencyFull(monthlyExpenses, currency)}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              </View>
+            </LinearGradient>
+          </View>
         </Animated.View>
 
         {/* AI Insight */}
@@ -714,10 +724,10 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   greeting: {
-    fontSize: 22,
-    fontWeight: 'bold',
+    fontSize: 24,
+    fontWeight: '800',
     color: theme.colors.primaryText,
-    letterSpacing: -0.5,
+    letterSpacing: -0.6,
   },
   streakPill: {
     flexDirection: 'row',
@@ -743,26 +753,53 @@ const styles = StyleSheet.create({
     color: '#FFB74D',
     fontWeight: '600',
   },
-  balanceCard: {
+  balanceCardOuter: {
     marginBottom: 16,
-    paddingVertical: 24,
+    borderRadius: 24,
+    overflow: 'hidden',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#0F1A2E',
+        shadowOpacity: 0.25,
+        shadowRadius: 24,
+        shadowOffset: { width: 0, height: 10 },
+      },
+      android: { elevation: 10 },
+    }),
+  },
+  balanceGradient: {
+    borderRadius: 24,
+    paddingVertical: 28,
+    paddingHorizontal: 24,
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  balanceGlow: {
+    position: 'absolute',
+    top: -40,
+    right: -40,
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    backgroundColor: 'rgba(62, 146, 204, 0.15)',
   },
   balanceLabel: {
     fontSize: 11,
-    color: theme.colors.secondaryText,
+    color: 'rgba(255,255,255,0.55)',
     marginBottom: 6,
     textAlign: 'center',
-    letterSpacing: 1,
+    letterSpacing: 1.5,
     textTransform: 'uppercase',
     fontWeight: '700',
   },
   balanceAmount: {
-    fontSize: 34,
+    fontSize: 36,
     fontWeight: '800',
-    letterSpacing: -1,
+    letterSpacing: -1.2,
     marginBottom: 24,
     flexShrink: 1,
     textAlign: 'center',
+    color: '#FFFFFF',
   },
   statsRow: {
     flexDirection: 'row',
@@ -787,10 +824,10 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   statIconIncome: {
-    backgroundColor: 'rgba(52, 199, 89, 0.12)',
+    backgroundColor: 'rgba(52, 211, 153, 0.15)',
   },
   statIconExpense: {
-    backgroundColor: 'rgba(255, 59, 48, 0.12)',
+    backgroundColor: 'rgba(248, 113, 113, 0.15)',
   },
   statTextGroup: {
     flex: 1,
@@ -798,21 +835,21 @@ const styles = StyleSheet.create({
   },
   statLabel: {
     fontSize: 11,
-    color: theme.colors.secondaryText,
+    color: 'rgba(255,255,255,0.5)',
     fontWeight: '600',
     marginBottom: 2,
-    letterSpacing: 0.2,
+    letterSpacing: 0.3,
   },
   statValue: {
     fontSize: 15,
     fontWeight: '700',
-    color: theme.colors.primaryText,
+    color: '#FFFFFF',
     flexShrink: 1,
   },
   statDivider: {
     width: 1,
     alignSelf: 'stretch',
-    backgroundColor: theme.colors.divider,
+    backgroundColor: 'rgba(255,255,255,0.12)',
     marginHorizontal: 16,
   },
   grid: {
@@ -888,9 +925,10 @@ const styles = StyleSheet.create({
     color: theme.colors.secondaryText,
   },
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: 17,
+    fontWeight: '800',
     color: theme.colors.primaryText,
+    letterSpacing: -0.3,
   },
   txCardWrap: {
     marginBottom: 10,
@@ -992,8 +1030,8 @@ const styles = StyleSheet.create({
     color: theme.colors.secondaryText,
   },
   /* Gamification bar */
-  gamifBar: { marginBottom: 14 },
-  gamifInner: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 14, gap: 12 },
+  gamifBar: { marginBottom: 14, borderRadius: 20 },
+  gamifInner: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 16, gap: 12 },
   gamifLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   gamifLevelBadge: { width: 30, height: 30, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   gamifLevelText: { fontSize: 13, fontWeight: '800', color: theme.colors.primaryText },
@@ -1011,6 +1049,7 @@ const styles = StyleSheet.create({
     color: theme.colors.secondaryText,
     textAlign: 'center',
     marginTop: 8,
+    marginBottom: 8,
     paddingHorizontal: 12,
     lineHeight: 18,
   },

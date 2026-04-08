@@ -7,7 +7,7 @@ import { AnimatedBackground } from '../components/AnimatedBackground';
 import { theme, formatCurrencyFull, getCategoryColor } from '../utils/theme';
 import { useFinancial } from '../context/FinancialContext';
 import { format, subMonths, addMonths, isThisMonth, isSameMonth, getDate, getDaysInMonth } from 'date-fns';
-import { TrendingUp, TrendingDown, BarChart2, Activity, PieChart, ChevronLeft, ChevronRight } from 'lucide-react-native';
+import { TrendingUp, TrendingDown, BarChart2, Activity, PieChart, ChevronLeft, ChevronRight, ZapOff } from 'lucide-react-native';
 
 const SCREEN_W = Dimensions.get('window').width;
 const CHART_W = SCREEN_W - 80;
@@ -72,6 +72,17 @@ export const AnalyticsScreen = () => {
   const daysPassed = isCurrentMonth ? Math.max(getDate(new Date()), 1) : getDaysInMonth(currentDate);
   const dailyAverage = monthlyExpenses / daysPassed;
 
+  const currentMonthActiveDays = useMemo(
+    () => new Set(monthTransactions.map(t => format(new Date(t.date), 'yyyy-MM-dd'))).size,
+    [monthTransactions],
+  );
+  const prevMonthActiveDays = useMemo(
+    () => new Set(lastMonthTransactions.map(t => format(new Date(t.date), 'yyyy-MM-dd'))).size,
+    [lastMonthTransactions],
+  );
+  const missedDays = Math.max(0, daysPassed - currentMonthActiveDays);
+  const missedPoints = missedDays * 10;
+
   const BAR_H = 120;
   const BAR_W = Math.floor((CHART_W - 10) / 6 / 3);
   const GAP = BAR_W * 0.3;
@@ -103,6 +114,26 @@ export const AnalyticsScreen = () => {
               </TouchableOpacity>
             </View>
           </View>
+        </View>
+
+        <View style={styles.activityRow}>
+          <GlassBox style={styles.activityBox}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
+              <Activity color={theme.colors.accent} size={14} style={{ marginRight: 6 }} />
+              <Text style={styles.activityTitle}>Activity (MoM)</Text>
+            </View>
+            <Text style={styles.activityValue}>{currentMonthActiveDays} days</Text>
+            <Text style={styles.activitySub}>vs {prevMonthActiveDays} last month</Text>
+          </GlassBox>
+
+          <GlassBox style={styles.activityBox}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
+              <ZapOff color={theme.colors.status.amber} size={14} style={{ marginRight: 6 }} />
+              <Text style={styles.activityTitle}>Missed Logs</Text>
+            </View>
+            <Text style={styles.activityValue}>{missedDays} days</Text>
+            <Text style={styles.activitySub}>~{missedPoints} pts missed</Text>
+          </GlassBox>
         </View>
 
         {/* Monthly Summary Cards */}
@@ -375,11 +406,35 @@ const styles = StyleSheet.create({
   header: {
     marginBottom: 16,
   },
-  title: {
-    fontSize: 24,
+  activityRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 16,
+  },
+  activityBox: {
+    flex: 1,
+    padding: 14,
+  },
+  activityTitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: theme.colors.secondaryText,
+  },
+  activityValue: {
+    fontSize: 20,
     fontWeight: 'bold',
     color: theme.colors.primaryText,
-    letterSpacing: -0.5,
+  },
+  activitySub: {
+    fontSize: 11,
+    color: theme.colors.secondaryText,
+    marginTop: 4,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: theme.colors.primaryText,
+    letterSpacing: -0.6,
     marginBottom: 2,
   },
   summaryRow: {
@@ -437,14 +492,15 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   insightValue: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 20,
+    fontWeight: '800',
     color: theme.colors.primaryText,
+    letterSpacing: -0.3,
     marginBottom: 4,
   },
   insightSub: {
     fontSize: 11,
-    color: '#666',
+    color: theme.colors.secondaryText,
   },
   netCard: {
     marginBottom: 16,
@@ -490,9 +546,10 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: 17,
+    fontWeight: '800',
     color: theme.colors.primaryText,
+    letterSpacing: -0.3,
     marginBottom: 12,
   },
   chartCard: {
@@ -587,9 +644,10 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   snapValue: {
-    fontSize: 17,
+    fontSize: 18,
     fontWeight: '800',
     color: theme.colors.primaryText,
     textAlign: 'center',
+    letterSpacing: -0.3,
   },
 });

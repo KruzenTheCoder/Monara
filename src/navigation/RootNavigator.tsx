@@ -10,6 +10,7 @@ import {
   X,
   TrendingDown,
   TrendingUp,
+  Calendar,
 } from 'lucide-react-native';
 import { HomeScreen } from '../screens/HomeScreen';
 import { TrackingScreen } from '../screens/TrackingScreen';
@@ -45,6 +46,7 @@ const TabLabel = ({ label, focused }: { label: string; focused: boolean }) => (
 const quickActions = [
   { id: 'expense', label: 'Add Expense', icon: TrendingDown, color: '#EF4444', type: 'expense' },
   { id: 'income', label: 'Add Income', icon: TrendingUp, color: '#10B981', type: 'income' },
+  { id: 'bill', label: 'Add Bill', icon: Calendar, color: '#3E92CC', type: 'bill' },
 ];
 
 // Animated Action Button Component
@@ -182,7 +184,7 @@ const AddPopup = ({
 }: {
   visible: boolean;
   onClose: () => void;
-  onActionPress: (actionType: 'expense' | 'income') => void;
+  onActionPress: (actionType: 'expense' | 'income' | 'bill') => void;
 }) => {
   const backdropOpacity = useRef(new Animated.Value(0)).current;
   const containerScale = useRef(new Animated.Value(0.8)).current;
@@ -334,7 +336,7 @@ const AddPopup = ({
                     item={action}
                     index={index}
                     isVisible={visible}
-                    onPress={() => onActionPress(action.type as 'expense' | 'income')}
+                    onPress={() => onActionPress(action.type as 'expense' | 'income' | 'bill')}
                   />
                 ))}
               </View>
@@ -422,16 +424,21 @@ export const RootNavigator = () => {
   const navigation = useNavigation<any>();
 
   const TAB_BAR_HEIGHT = 60;
-  // Android standalone builds require extra padding compared to Expo Go due to native navigation bars in edge-to-edge mode.
+  // Android APK builds with edgeToEdgeEnabled draw behind the system nav bar.
+  // insets.bottom can under-report on some devices, so use a generous minimum.
   const bottomPadding = Platform.OS === 'android' 
-    ? Math.max(insets.bottom, 24) 
+    ? Math.max(insets.bottom, 48) 
     : Math.max(insets.bottom, 8);
 
-  const handleActionPress = (actionType: 'expense' | 'income') => {
+  const handleActionPress = (actionType: 'expense' | 'income' | 'bill') => {
     setShowPopup(false);
 
     // Small delay to let the modal close animation complete
     setTimeout(() => {
+      if (actionType === 'bill') {
+        navigation.navigate('Bills' as never, { openCreate: true } as never);
+        return;
+      }
       navigation.navigate('AddTransaction' as never, { type: actionType } as never);
     }, 250);
   };
@@ -448,16 +455,15 @@ export const RootNavigator = () => {
             right: 0,
             height: TAB_BAR_HEIGHT + bottomPadding,
             paddingBottom: bottomPadding,
-            paddingTop: 8,
+            paddingTop: 10,
             paddingHorizontal: 8,
-            backgroundColor: theme.colors.surface,
-            borderTopWidth: StyleSheet.hairlineWidth,
-            borderTopColor: theme.colors.divider,
+            backgroundColor: theme.isDark ? theme.colors.surface : '#FFFFFF',
+            borderTopWidth: 0,
             elevation: 0,
-            shadowColor: theme.isDark ? '#000' : '#1B2A4A',
-            shadowOffset: { width: 0, height: -2 },
-            shadowOpacity: theme.isDark ? 0.2 : 0.06,
-            shadowRadius: 8,
+            shadowColor: theme.isDark ? '#000' : '#0F1A2E',
+            shadowOffset: { width: 0, height: -4 },
+            shadowOpacity: theme.isDark ? 0.3 : 0.08,
+            shadowRadius: 16,
           },
           tabBarItemStyle: {
             paddingVertical: 4,
@@ -533,14 +539,14 @@ export const RootNavigator = () => {
 const styles = StyleSheet.create({
   tabLabel: {
     fontSize: 10,
-    fontWeight: '500',
+    fontWeight: '600',
     color: theme.colors.secondaryText,
-    marginTop: 2,
-    letterSpacing: 0.2,
+    marginTop: 3,
+    letterSpacing: 0.3,
   },
   tabLabelFocused: {
     color: theme.colors.accent,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   centerButtonTouchable: {
     position: 'absolute',

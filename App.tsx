@@ -31,18 +31,31 @@ import { Platform, View, ActivityIndicator } from 'react-native';
 import { theme } from './src/utils/theme';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getAdapter } from './src/db';
+import { supabase } from './src/lib/supabase';
 
 const Stack = createNativeStackNavigator();
 
 // Setup basic notification behavior
 Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
+  handleNotification: async () => {
+    const suppress = !!(globalThis as any).__monaraSuppressNotifications;
+    if (suppress) {
+      return {
+        shouldShowAlert: false,
+        shouldPlaySound: false,
+        shouldSetBadge: false,
+        shouldShowBanner: false,
+        shouldShowList: false,
+      };
+    }
+    return {
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: false,
+      shouldShowBanner: true,
+      shouldShowList: true,
+    };
+  },
 });
 
 const NavigationWrapper = () => {
@@ -111,13 +124,47 @@ const NavigationWrapper = () => {
       }
       setOnboardingChecked(false);
       try {
+        // Prefer a Supabase DB check when configured (matches "check on the Supabase DB" requirement)
+        const hasSupabase =
+          !!process.env.EXPO_PUBLIC_SUPABASE_URL && !!process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+
+        if (hasSupabase) {
+          const { data, error } = await supabase
+            .from('onboarding_responses')
+            .select('completed, completed_at, answers')
+            .eq('user_id', session.user.id)
+            .maybeSingle();
+
+          if (error) throw error;
+
+          const completed = !!data?.completed;
+          setNeedsOnboarding(!completed);
+          if (completed) {
+            await AsyncStorage.setItem(
+              onboardingKey,
+              JSON.stringify({
+                completed: true,
+                completed_at: data?.completed_at || null,
+                answers: data?.answers || {},
+              }),
+            );
+          } else {
+            await AsyncStorage.removeItem(onboardingKey);
+          }
+          return;
+        }
+
+        // Fallback to whichever backend is configured (or local storage)
         const db = getAdapter();
         if (db.getOnboarding) {
           const res = await db.getOnboarding();
           const completed = !!(res && res.completed);
           setNeedsOnboarding(!completed);
           if (completed) {
-            await AsyncStorage.setItem(onboardingKey, JSON.stringify({ completed: true, completed_at: res?.completed_at || null, answers: res?.answers || {} }));
+            await AsyncStorage.setItem(
+              onboardingKey,
+              JSON.stringify({ completed: true, completed_at: res?.completed_at || null, answers: res?.answers || {} }),
+            );
           } else {
             await AsyncStorage.removeItem(onboardingKey);
           }
@@ -173,7 +220,7 @@ const NavigationWrapper = () => {
 
   return (
     <NavigationContainer theme={navTheme}>
-      <StatusBar style={theme.isDark ? 'light' : 'dark'} />
+      <StatusBar style={theme.isDark ? 'light' : 'dark'} translucent={true} />
       <RewardPopup />
       {session ? (
         <Stack.Navigator

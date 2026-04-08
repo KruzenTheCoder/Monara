@@ -16,7 +16,7 @@ import { GlassBox } from '../components/GlassBox';
 import { AnimatedBackground } from '../components/AnimatedBackground';
 import { theme, formatCurrencyFull, getCategoryColor } from '../utils/theme';
 import { useFinancial } from '../context/FinancialContext';
-import { Edit3, X, Check, AlertTriangle, ChevronRight, ChevronLeft, PlusCircle, PiggyBank, Calendar, Activity, ZapOff } from 'lucide-react-native';
+import { Edit3, X, Check, AlertTriangle, ChevronRight, ChevronLeft, PlusCircle, PiggyBank, Calendar } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { showStyledAlert } from '../components/StyledAlert';
 import { GlassCalendarPicker } from '../components/GlassCalendarPicker';
@@ -63,13 +63,6 @@ export const BudgetScreen = () => {
 
   const totalAllocated = budgets.reduce((sum, b) => sum + b.monthly_limit, 0);
   const totalSpent = Object.values(monthlySpendingByCategory).reduce((sum, v) => sum + v, 0);
-
-  // Activity stats
-  const currentMonthActiveDays = new Set(monthTransactions.map(t => format(new Date(t.date), 'yyyy-MM-dd'))).size;
-  const prevMonthActiveDays = new Set(prevMonthTransactions.map(t => format(new Date(t.date), 'yyyy-MM-dd'))).size;
-  const targetDays = isCurrentMonth ? new Date().getDate() : getDaysInMonth(currentDate);
-  const missedDays = Math.max(0, targetDays - currentMonthActiveDays);
-  const missedPoints = missedDays * 10; // Approx 10 points missed per day
 
   // Total bucket is user's set target, or defaults to actual monthlyIncome if not set
   const maxAvailable = user.target_monthly_budget > 0 ? user.target_monthly_budget : monthlyIncome;
@@ -200,27 +193,6 @@ export const BudgetScreen = () => {
               </TouchableOpacity>
             </View>
           </View>
-        </View>
-
-        {/* Activity & Points Insight */}
-        <View style={styles.activityRow}>
-          <GlassBox style={styles.activityBox}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
-              <Activity color={theme.colors.accent} size={14} style={{ marginRight: 6 }} />
-              <Text style={styles.activityTitle}>Activity (MoM)</Text>
-            </View>
-            <Text style={styles.activityValue}>{currentMonthActiveDays} days</Text>
-            <Text style={styles.activitySub}>vs {prevMonthActiveDays} last month</Text>
-          </GlassBox>
-
-          <GlassBox style={styles.activityBox}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
-              <ZapOff color={theme.colors.status.amber} size={14} style={{ marginRight: 6 }} />
-              <Text style={styles.activityTitle}>Missed Logs</Text>
-            </View>
-            <Text style={styles.activityValue}>{missedDays} days</Text>
-            <Text style={styles.activitySub}>~{missedPoints} pts missed</Text>
-          </GlassBox>
         </View>
 
         {/* Overall Budget Summary */}
@@ -686,9 +658,9 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 24,
-    fontWeight: 'bold',
+    fontWeight: '800',
     color: theme.colors.primaryText,
-    letterSpacing: -0.5,
+    letterSpacing: -0.6,
     marginBottom: 2,
   },
   summaryCard: {
@@ -722,8 +694,9 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: 17,
+    fontWeight: '800',
+    letterSpacing: -0.3,
     color: theme.colors.primaryText,
     marginBottom: 12,
   },
@@ -847,7 +820,8 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: '800',
+    letterSpacing: -0.3,
     color: theme.colors.primaryText,
   },
   modalInputRow: {
@@ -869,7 +843,8 @@ const styles = StyleSheet.create({
   modalInput: {
     flex: 1,
     fontSize: 22,
-    fontWeight: '700',
+    fontWeight: '800',
+    letterSpacing: -0.3,
     color: theme.colors.primaryText,
     paddingVertical: 10,
   },
@@ -913,29 +888,5 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     color: theme.colors.primaryText,
-  },
-  activityRow: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 16,
-  },
-  activityBox: {
-    flex: 1,
-    padding: 14,
-  },
-  activityTitle: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: theme.colors.secondaryText,
-  },
-  activityValue: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: theme.colors.primaryText,
-  },
-  activitySub: {
-    fontSize: 11,
-    color: '#888',
-    marginTop: 4,
   },
 });
