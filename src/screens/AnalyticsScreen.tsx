@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Dimensions, TouchableOpacity } from 'react-native';
+import React, { useMemo, useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, Dimensions, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import Svg, { Rect, Text as SvgText, Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
 import { GlassBox } from '../components/GlassBox';
@@ -7,7 +7,8 @@ import { AnimatedBackground } from '../components/AnimatedBackground';
 import { theme, formatCurrencyFull, getCategoryColor } from '../utils/theme';
 import { useFinancial } from '../context/FinancialContext';
 import { format, subMonths, addMonths, isThisMonth, isSameMonth, getDate, getDaysInMonth } from 'date-fns';
-import { TrendingUp, TrendingDown, BarChart2, Activity, PieChart, ChevronLeft, ChevronRight, ZapOff } from 'lucide-react-native';
+import { TrendingUp, TrendingDown, BarChart2, Activity, PieChart, ChevronLeft, ChevronRight, ZapOff, Sparkles, AlertTriangle } from 'lucide-react-native';
+import { analyzeFinancialData, AnalysisResult } from '../utils/financialEngineApi';
 
 const SCREEN_W = Dimensions.get('window').width;
 const CHART_W = SCREEN_W - 80;
@@ -23,6 +24,24 @@ export const AnalyticsScreen = () => {
 
   const [currentDate, setCurrentDate] = useState(new Date());
   const isCurrentMonth = isSameMonth(currentDate, new Date());
+
+  const [aiAnalysis, setAiAnalysis] = useState<AnalysisResult | null>(null);
+  const [loadingAi, setLoadingAi] = useState(false);
+
+  useEffect(() => {
+    const fetchAnalysis = async () => {
+      setLoadingAi(true);
+      // Fetch analysis for all transactions up to current selected month
+      const data = await analyzeFinancialData(transactions, currency);
+      if (data) {
+        setAiAnalysis(data);
+      }
+      setLoadingAi(false);
+    };
+    
+    // In a real app, you might want to debounce this or only run it on mount / refresh
+    fetchAnalysis();
+  }, [transactions, currency]);
 
   const monthTransactions = useMemo(() => transactions.filter(t => isSameMonth(new Date(t.date), currentDate)), [transactions, currentDate]);
   const lastMonthTransactions = useMemo(() => transactions.filter(t => isSameMonth(new Date(t.date), subMonths(currentDate, 1))), [transactions, currentDate]);
@@ -166,6 +185,66 @@ export const AnalyticsScreen = () => {
             <Text style={styles.taxBannerVal}>{formatCurrencyFull(monthlyEstimatedTax, currency)}</Text>
           </GlassBox>
         )}
+
+        {/* AI Future Insights */}
+        <Text style={styles.sectionTitle}>AI Future Insights</Text>
+        <GlassBox style={{ marginBottom: 20, padding: 16, backgroundColor: 'rgba(100, 181, 246, 0.05)' }}>
+          {loadingAi ? (
+            <View style={{ padding: 20, alignItems: 'center' }}>
+              <ActivityIndicator color={theme.colors.accent} />
+              <Text style={{ marginTop: 10, color: theme.colors.secondaryText, fontSize: 12 }}>Analyzing financial patterns...</Text>
+            </View>
+          ) : aiAnalysis ? (
+            <View>
+              {aiAnalysis.insights.map((insight, idx) => (
+                <View key={idx} style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 12 }}>
+                  <Sparkles color={theme.colors.accent} size={16} style={{ marginRight: 8, marginTop: 2 }} />
+                  <Text style={{ flex: 1, fontSize: 13, color: theme.colors.primaryText, lineHeight: 18 }}>
+                    {insight}
+                  </Text>
+                </View>
+              ))}
+              
+              {aiAnalysis.forecast.length > 0 && (
+                <View style={{ marginTop: 8, paddingTop: 12, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.1)' }}>
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: theme.colors.secondaryText, marginBottom: 8, textTransform: 'uppercase' }}>Next 30 Days Forecast</Text>
+                  {aiAnalysis.forecast.slice(0, 3).map((f, idx) => (
+                    <View key={idx} style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
+                      <Text style={{ fontSize: 13, color: theme.colors.primaryText }}>{f.category}</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <Text style={{ fontSize: 13, fontWeight: '700', color: theme.colors.primaryText, marginRight: 6 }}>
+                          {formatCurrencyFull(f.forecasted_amount, currency)}
+                        </Text>
+                        {f.trend === 'increasing' ? (
+                          <TrendingUp color={theme.colors.status.red} size={12} />
+                        ) : (
+                          <TrendingDown color={theme.colors.status.green} size={12} />
+                        )}
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              )}
+
+              {aiAnalysis.anomalies.length > 0 && (
+                <View style={{ marginTop: 8, paddingTop: 12, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.1)' }}>
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: theme.colors.status.amber, marginBottom: 8, textTransform: 'uppercase' }}>Anomalies Detected</Text>
+                  {aiAnalysis.anomalies.slice(0, 2).map((a, idx) => (
+                    <View key={idx} style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 6 }}>
+                      <AlertTriangle color={theme.colors.status.amber} size={14} style={{ marginRight: 6, marginTop: 1 }} />
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontSize: 13, color: theme.colors.primaryText }}>{a.category} - {formatCurrencyFull(a.amount, currency)}</Text>
+                        <Text style={{ fontSize: 11, color: theme.colors.secondaryText }}>{a.reason}</Text>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              )}
+            </View>
+          ) : (
+            <Text style={{ color: theme.colors.secondaryText, fontSize: 13 }}>AI Engine is currently unavailable.</Text>
+          )}
+        </GlassBox>
 
         {/* Deep Insights */}
         <Text style={styles.sectionTitle}>Key Insights</Text>
